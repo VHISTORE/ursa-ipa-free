@@ -1,5 +1,8 @@
+/* Импортируем стильный широкий шрифт */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap');
+
 :root {
-    --header-bg: rgba(0, 0, 0, 0.7);
+    --header-bg: rgba(0, 0, 0, 0.6); 
     --text-color: #ffffff;
     --badge-color: #30d158;
 }
@@ -17,28 +20,22 @@ body {
     height: 100vh;
     color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    background-color: #007aff; /* Базовый цвет */
+    background-color: #007aff;
     overflow: hidden;
     position: relative;
 }
 
-/* Создаем отдельный слой для плавной круговой анимации */
+/* Фон оставляем (он крутой) */
 body::before {
     content: "";
     position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    /* Используем несколько градиентов для глубины */
+    top: -50%; left: -50%; width: 200%; height: 200%;
     background: radial-gradient(circle at center, #00d2ff 0%, #3a7bd5 30%, #007aff 60%, #00c6ff 100%);
     background-size: cover;
-    /* Анимация вращения — самая плавная для глаза */
     animation: rotateGradient 15s linear infinite;
     z-index: -1;
 }
 
-/* Слой шума для текстуры */
 body::after {
     content: "";
     position: fixed;
@@ -54,44 +51,63 @@ body::after {
     to { transform: rotate(360deg); }
 }
 
-/* Шапка сайта */
+/* --- КОМПАКТНАЯ ШАПКА --- */
 .main-header {
     position: sticky;
     top: 0;
     z-index: 1000;
     width: 100%;
-    padding: 22px;
+    /* Уменьшили высоту за счет уменьшения padding */
+    padding: 12px 20px; 
     background: var(--header-bg);
-    backdrop-filter: blur(25px) saturate(200%);
-    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
+/* --- СТИЛЬНЫЙ ЛОГОТИП --- */
 .main-header h1 {
-    font-size: 24px;
-    font-weight: 800;
-    letter-spacing: 1px;
+    font-family: 'Montserrat', sans-serif; /* Применяем жирный широкий шрифт */
+    font-size: 20px; /* Чуть меньше размер для компактности */
+    font-weight: 900;
+    letter-spacing: 2px; /* Увеличили межбуквенный интервал */
+    text-transform: uppercase;
     margin: 0;
-    background: linear-gradient(to bottom, #fff, #e0e0e0);
+    
+    /* Градиент с эффектом стали/стекла */
+    background: linear-gradient(
+        to bottom, 
+        #ffffff 0%, 
+        #ffffff 45%, 
+        #a1a1a1 50%, 
+        #ffffff 55%, 
+        #ffffff 100%
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .badge {
-    font-size: 10px;
+    font-family: -apple-system, sans-serif;
+    font-size: 8px;
     font-weight: 900;
     color: var(--badge-color);
-    border: 1.5px solid var(--badge-color);
-    padding: 1px 6px;
-    border-radius: 7px;
-    margin-left: 8px;
+    border: 1px solid var(--badge-color);
+    padding: 1px 4px;
+    border-radius: 4px;
+    margin-left: 6px;
     vertical-align: middle;
+    letter-spacing: 0px;
     background: rgba(48, 209, 88, 0.1);
+    text-transform: uppercase;
 }
 
 #content {
     position: relative;
     z-index: 1;
-    padding: 20px;
+    padding: 15px;
 }
