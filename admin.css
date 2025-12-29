@@ -171,23 +171,31 @@ input, select, textarea {
     font-size: 16px;
     box-sizing: border-box;
     transition: all 0.2s;
-    -webkit-appearance: none; /* Убирает системные стили iOS */
+    -webkit-appearance: none;
+    outline: none;
 }
 
-/* КРИТИЧЕСКИ ВАЖНО: Фикс многострочного текста для списков модов */
+/* ПРИМЕНЯЕМ КО ВСЕМ ТЕКСТОВЫМ ОБЛАСТЯМ (Features и Description) */
 textarea {
     resize: vertical;
-    min-height: 160px;
+    min-height: 100px;
     line-height: 1.5;
-    white-space: pre-wrap !important; /* Сохраняет переносы строк */
+    white-space: pre-wrap !important;
     font-family: inherit;
     word-break: break-word;
+}
+
+#description {
+    min-height: 120px;
+}
+
+#features {
+    min-height: 150px; /* Больше места для списка модов */
 }
 
 input:focus, select:focus, textarea:focus { 
     border-color: var(--accent); 
     background: rgba(255, 255, 255, 0.08); 
-    outline: none; 
 }
 
 /* --- BUTTONS --- */
