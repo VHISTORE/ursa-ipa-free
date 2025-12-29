@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
     authDomain: "ursaipa.firebaseapp.com",
@@ -17,7 +16,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM";
+const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM"; 
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 
 let editMode = false;
@@ -31,7 +30,7 @@ const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
 
-// --- ДОСТУП ---
+// --- УПРАВЛЕНИЕ ДОСТУПОМ ---
 onAuthStateChanged(auth, (user) => {
     if (user && user.email === ADMIN_EMAIL) {
         authContainer.style.display = 'none';
@@ -58,7 +57,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- НОВОЕ: ПОЛУЧЕНИЕ ПРЯМОЙ ССЫЛКИ (API МАЙ 2025) ---
+// --- СОЗДАНИЕ DIRECT LINK (МАЙ 2025) ---
 async function createDirectLink(contentId) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -70,17 +69,20 @@ async function createDirectLink(contentId) {
             body: JSON.stringify({}) 
         });
         const result = await response.json();
-        if (result.status === "ok" && result.data.directLinks.length > 0) {
+        
+        // Проверка: есть ли в ответе массив ссылок
+        if (result.status === "ok" && result.data && result.data.directLinks && result.data.directLinks.length > 0) {
             return result.data.directLinks[0].link;
         }
+        console.warn("DirectLink не получен, используем обычную ссылку.");
         return null;
     } catch (e) {
-        console.error("DirectLink Error:", e);
+        console.error("DirectLink API Error:", e);
         return null;
     }
 }
 
-// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА ---
+// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА НА GOFILE ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -107,27 +109,26 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔗 Creating Direct Link...";
+                    status.textContent = "🔗 Generating Link...";
                     
-                    // Генерируем прямую ссылку
+                    // Попытка создать прямую ссылку (Premium опция)
                     const directUrl = await createDirectLink(res.data.id);
                     
-                    if (directUrl) {
-                        hiddenInput.value = directUrl; // Сохраняем прямую ссылку в скрытый инпут
-                        status.textContent = "✅ Ready!";
-                        status.style.color = "#30d158";
-                        progress.style.background = "#30d158";
-                        
-                        if (hiddenInputId === 'icon_url') {
-                            isIconUploaded = true;
-                            document.getElementById('icon-preview').innerHTML = `<img src="${directUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
-                        } else {
-                            isIpaUploaded = true;
-                        }
-                        updateSubmitButton();
+                    // Если прямая ссылка не создалась, берем ссылку на страницу скачивания
+                    const finalUrl = directUrl || res.data.downloadPage;
+                    
+                    hiddenInput.value = finalUrl; 
+                    status.textContent = directUrl ? "✅ Direct Link Ready!" : "✅ Link Ready!";
+                    status.style.color = "#30d158";
+                    progress.style.background = "#30d158";
+                    
+                    if (hiddenInputId === 'icon_url') {
+                        isIconUploaded = true;
+                        document.getElementById('icon-preview').innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
                     } else {
-                        status.textContent = "❌ DirectLink failed";
+                        isIpaUploaded = true;
                     }
+                    updateSubmitButton();
                 } else {
                     status.textContent = "❌ Error: " + res.status;
                 }
@@ -213,7 +214,6 @@ function startEdit(id, appData) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- ОТПРАВКА В FIREBASE ---
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
@@ -225,8 +225,8 @@ form.addEventListener('submit', async (e) => {
         version: document.getElementById('version').value,
         size: document.getElementById('size').value,
         bundle_id: document.getElementById('bundle_id').value,
-        icon_url: document.getElementById('icon_url').value, // Здесь будет прямая ссылка
-        download_url: document.getElementById('download_url').value, // Здесь будет прямая ссылка
+        icon_url: document.getElementById('icon_url').value, 
+        download_url: document.getElementById('download_url').value, 
         min_ios: document.getElementById('min_ios').value,
         features: document.getElementById('features').value || "Original",
         description: document.getElementById('description').value,
@@ -236,14 +236,13 @@ form.addEventListener('submit', async (e) => {
     try {
         if (editMode) {
             await updateDoc(doc(db, "apps", currentEditId), appObj);
-            alert("Updated!");
         } else {
             appObj.views = 0;
             await addDoc(collection(db, "apps"), appObj);
-            alert("Added!");
         }
         resetForm();
         loadInventory();
+        alert("Success!");
     } catch (err) { alert(err.message); }
     submitBtn.disabled = false;
 });
