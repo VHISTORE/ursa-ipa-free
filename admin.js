@@ -19,7 +19,6 @@ const provider = new GoogleAuthProvider();
 
 // Gofile & Admin Data
 const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35"; 
-// Исправлено: список админов
 const ADMIN_EMAILS = ["vibemusic1712@gmail.com", "Wasmachensachenh@gmail.com"];
 const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; 
 
@@ -46,9 +45,9 @@ function formatBytes(bytes, decimals = 2) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-// --- ACCESS CONTROL (Fixed Error) ---
+// --- ACCESS CONTROL ---
 onAuthStateChanged(auth, (user) => {
-    // Исправлено: используем ADMIN_EMAILS.includes()
+    // Check if the user's email is in the authorized admins list
     if (user && ADMIN_EMAILS.includes(user.email)) {
         authContainer.style.display = 'none';
         adminMain.style.display = 'block';
@@ -307,3 +306,10 @@ function resetForm() {
     document.getElementById('icon-preview').innerHTML = "📸";
     updateSubmitButton();
 }
+
+// FIX: Allow multi-line input in Description (textarea)
+document.getElementById('description').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.stopPropagation(); 
+    }
+});
