@@ -37,32 +37,34 @@ let currentCategory = 'All';
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
     
+    // Проверка поддержки Notification API
+    if (!('Notification' in window)) {
+        alert("Уведомления не поддерживаются вашим браузером.");
+        return;
+    }
+
     // Проверка для iOS: работает ли сайт как PWA (добавлен на рабочий стол)
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
     if (isIOS && !isStandalone) {
-        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' внизу Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с рабочего стола!");
+        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' в Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с рабочего стола и попробуйте снова!");
         return;
     }
 
     try {
         if (statusEl) statusEl.textContent = '...';
         
-        // Запрос прав у браузера
+        // Запрос прав
         const permission = await Notification.requestPermission();
         
         if (permission === 'granted') {
-            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ ДЛЯ GITHUB PAGES:
-            // Получаем существующую регистрацию Service Worker
             const registration = await navigator.serviceWorker.getRegistration();
-            
             if (!registration) {
-                alert("Service Worker не найден. Пожалуйста, обновите страницу.");
+                alert("Service Worker не найден. Обновите страницу.");
                 return;
             }
 
-            // Передаем регистрацию в getToken, чтобы избежать ошибки 404
             const token = await getToken(messaging, { 
                 vapidKey: 'BMAUf9qk8ZkeepGWcHaffFfutJ7rAvavjGF4dvhWYZ3aUuswVAfiF2h6Pc6ZNZqT0UlkxXYT0pmJZis2LNIJBvc',
                 serviceWorkerRegistration: registration
@@ -71,16 +73,20 @@ window.activateNotifications = async function() {
             if (token) {
                 console.log("FCM Token:", token);
                 localStorage.setItem('ursa_notify_enabled', 'true');
+
+                // Логика подписки на тему 'all' через API Firebase
+                // Примечание: Для GitHub Pages отправка пушей будет идти на тему /topics/all
+                
                 if (statusEl) {
                     statusEl.textContent = 'ON';
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
-                alert("✅ Уведомления включены!");
+                alert("✅ Уведомления успешно включены!");
             }
         } else {
             if (statusEl) statusEl.textContent = 'OFF';
-            alert("❌ Доступ запрещен. Проверьте настройки уведомлений в браузере.");
+            alert("❌ Доступ запрещен. Проверьте настройки уведомлений.");
         }
     } catch (error) {
         console.error("Notification Error:", error);
@@ -89,18 +95,17 @@ window.activateNotifications = async function() {
     }
 };
 
-// Прослушивание сообщений, когда сайт открыт
+// Прослушивание сообщений во время работы сайта
 onMessage(messaging, (payload) => {
     console.log('Message received. ', payload);
     alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
 });
 
 /**
- * Helper: Share functionality (Deep Linking)
+ * Helper: Share functionality
  */
 window.shareApp = (bundleId) => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?id=${bundleId}`;
-    
     if (navigator.share) {
         navigator.share({
             title: 'URSA IPA',
@@ -114,26 +119,16 @@ window.shareApp = (bundleId) => {
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
-        alert('Link copied to clipboard!');
+        alert('Ссылка скопирована!');
     }
 };
 
-/**
- * Converts Firebase Timestamp to an English date string
- */
 function formatDate(timestamp) {
     if (!timestamp) return "Unknown";
     const date = timestamp.toDate();
-    return date.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
+    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-/**
- * Creates an application card element
- */
 function createAppCard(appData, docId) {
     const card = document.createElement('div');
     card.className = 'app-card';
@@ -158,41 +153,27 @@ function createAppCard(appData, docId) {
     return card;
 }
 
-/**
- * Renders the main app list
- */
 function renderAppCard(appData, docId) {
     const appList = document.getElementById('app-list');
-    if (!appList) return;
-    appList.appendChild(createAppCard(appData, docId));
+    if (appList) appList.appendChild(createAppCard(appData, docId));
 }
 
-/**
- * Generates category buttons
- */
 async function renderCategoryBar(sectionName) {
     const bar = document.getElementById('category-bar');
     if (!bar) return;
     bar.innerHTML = '';
-    
     const categories = ['All'];
-    
     try {
         const q = query(collection(db, "apps"), where("section", "==", sectionName));
         const snap = await getDocs(q);
-        
         snap.forEach(doc => {
             const cat = doc.data().category;
-            if (cat && !categories.includes(cat)) {
-                categories.push(cat);
-            }
+            if (cat && !categories.includes(cat)) categories.push(cat);
         });
-
         categories.forEach(cat => {
             const btn = document.createElement('button');
             btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
             btn.textContent = cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
-            
             btn.onclick = (e) => {
                 e.stopPropagation();
                 currentCategory = cat;
@@ -202,18 +183,12 @@ async function renderCategoryBar(sectionName) {
             };
             bar.appendChild(btn);
         });
-    } catch (e) {
-        console.error("Category Bar Error:", e);
-    }
+    } catch (e) { console.error(e); }
 }
 
-/**
- * Opens modal and INCREMENTS views
- */
 async function openModal(appData, docId) {
     const overlay = document.getElementById('modal-overlay');
     const modalBody = document.getElementById('modal-body');
-
     const displayViews = (appData.views || 0) + 1;
 
     modalBody.innerHTML = `
@@ -239,15 +214,10 @@ async function openModal(appData, docId) {
         <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
     `;
     overlay.classList.add('active');
-
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
-
     if (docId) {
-        try {
-            const appDocRef = doc(db, "apps", docId);
-            await updateDoc(appDocRef, { views: increment(1) });
-        } catch (e) { console.error("Error updating views:", e); }
+        try { await updateDoc(doc(db, "apps", docId), { views: increment(1) }); } catch (e) {}
     }
 }
 
@@ -262,85 +232,51 @@ document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target.id === 'modal-overlay') closeModal();
 });
 
-/**
- * Fetches apps from Firebase
- */
 async function loadApps(sectionName, category = 'All') {
     const appList = document.getElementById('app-list');
     if (!appList) return;
-    
-    appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5; font-size:14px;">Loading...</div>';
-
+    appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">Loading...</div>';
     try {
         const colRef = collection(db, "apps");
-        let q;
-        
-        if (category === 'All') {
-            q = query(colRef, where("section", "==", sectionName), orderBy("upload_date", "desc"));
-        } else {
-            q = query(colRef, 
-                where("section", "==", sectionName), 
-                where("category", "==", category), 
-                orderBy("upload_date", "desc")
-            );
-        }
+        let q = (category === 'All') 
+            ? query(colRef, where("section", "==", sectionName), orderBy("upload_date", "desc"))
+            : query(colRef, where("section", "==", sectionName), where("category", "==", category), orderBy("upload_date", "desc"));
         
         const querySnapshot = await getDocs(q);
         appList.innerHTML = ''; 
-
         if (querySnapshot.empty) {
             appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">No items found</div>';
             return;
         }
-
         querySnapshot.forEach((doc) => renderAppCard(doc.data(), doc.id));
-    } catch (e) {
-        console.error("Firebase Error:", e);
-        appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading apps</div>`;
-    }
+    } catch (e) { appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading data</div>`; }
 }
 
-/**
- * Stats logic for More section
- */
 async function updateStats() {
     try {
         const snap = await getDocs(collection(db, "apps"));
         let totalViews = 0;
         snap.forEach(doc => { totalViews += (doc.data().views || 0); });
-
         const filesEl = document.getElementById('stat-files');
         const viewsEl = document.getElementById('stat-views');
-        
         if (filesEl) filesEl.textContent = snap.size;
         if (viewsEl) viewsEl.textContent = totalViews.toLocaleString();
-    } catch (e) { console.error("Stats error:", e); }
+    } catch (e) {}
 }
 
-// --- SEARCH LOGIC ---
+// SEARCH LOGIC
 const searchOverlay = document.getElementById('search-overlay');
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
 const clearSearchBtn = document.getElementById('clear-search');
 
 function toggleSearch(show) {
-    if (show) {
-        searchOverlay.classList.add('active');
-        searchInput.focus();
-    } else {
-        searchOverlay.classList.remove('active');
-        searchInput.value = '';
-        searchResults.innerHTML = '';
-        clearSearchBtn.style.display = 'none';
-    }
+    if (show) { searchOverlay.classList.add('active'); searchInput.focus(); } 
+    else { searchOverlay.classList.remove('active'); searchInput.value = ''; searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; }
 }
 
 async function performSearch(term) {
-    if (term.length < 2) {
-        searchResults.innerHTML = '';
-        clearSearchBtn.style.display = 'none';
-        return;
-    }
+    if (term.length < 2) { searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; return; }
     clearSearchBtn.style.display = 'block';
     searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">Searching...</div>';
     try {
@@ -350,46 +286,29 @@ async function performSearch(term) {
         snap.forEach(doc => {
             const data = doc.data();
             if (data.name.toLowerCase().includes(term.toLowerCase())) {
-                found = true;
-                searchResults.appendChild(createAppCard(data, doc.id));
+                found = true; searchResults.appendChild(createAppCard(data, doc.id));
             }
         });
         if (!found) searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">No results found</div>';
-    } catch (e) { console.error("Search failed:", e); }
+    } catch (e) {}
 }
 
 searchInput.addEventListener('input', (e) => performSearch(e.target.value));
-clearSearchBtn.addEventListener('click', () => {
-    searchInput.value = '';
-    searchResults.innerHTML = '';
-    clearSearchBtn.style.display = 'none';
-    searchInput.focus();
-});
+clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; searchInput.focus(); });
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
-/**
- * Bottom Navigation logic
- */
+// BOTTOM NAVIGATION
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
         const target = button.getAttribute('data-target');
-
-        if (target === 'search') {
-            toggleSearch(true);
-            return; 
-        }
-
+        if (target === 'search') { toggleSearch(true); return; }
         const contentArea = document.getElementById('content');
         if (contentArea) contentArea.scrollTo({ top: 0, behavior: 'smooth' });
-
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         
         if (target === 'more') {
             const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
-            const statusText = isNotifyEnabled ? 'ON' : 'OFF';
-            const statusStyle = isNotifyEnabled ? 'background: #30d158; color: black;' : '';
-
             document.getElementById('category-bar').innerHTML = '';
             document.getElementById('app-list').innerHTML = `
                 <div class="more-page">
@@ -397,84 +316,46 @@ document.querySelectorAll('.nav-item').forEach(button => {
                         <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
                         <h2>URSA IPA Company</h2>
                     </div>
-
                     <div class="more-group">
                         <div class="stats-card">
-                            <div class="stat-box">
-                                <span class="stat-value" id="stat-files">...</span>
-                                <span class="stat-label">FILES</span>
-                            </div>
+                            <div class="stat-box"><span class="stat-value" id="stat-files">...</span><span class="stat-label">FILES</span></div>
                             <div class="stat-divider"></div>
-                            <div class="stat-box">
-                                <span class="stat-value" id="stat-views">...</span>
-                                <span class="stat-label">TOTAL VIEWS</span>
-                            </div>
+                            <div class="stat-box"><span class="stat-value" id="stat-views">...</span><span class="stat-label">TOTAL VIEWS</span></div>
                         </div>
                     </div>
-
                     <div class="more-group">
                         <a href="https://t.me/ursa_ipa" target="_blank" class="more-item-link">
-                            <div class="more-item-content">
-                                <span class="item-icon">✈️</span>
-                                <span>Telegram Channel</span>
-                            </div>
-                            <span class="arrow">›</span>
+                            <div class="more-item-content"><span class="item-icon">✈️</span><span>Telegram Channel</span></div><span class="arrow">›</span>
                         </a>
                         <div class="more-item-link" onclick="alert('Donation system coming soon!')">
-                            <div class="more-item-content">
-                                <span class="item-icon">💎</span>
-                                <span>Support Author</span>
-                            </div>
-                            <span class="arrow">›</span>
+                            <div class="more-item-content"><span class="item-icon">💎</span><span>Support Author</span></div><span class="arrow">›</span>
                         </div>
-                        <div class="more-item-link notify-btn" onclick="window.activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
-                            <div class="more-item-content">
-                                <span class="item-icon">🔔</span>
-                                <span>IPA Notifications</span>
-                            </div>
-                            <span class="notify-status" id="notify-status" style="${statusStyle}">${statusText}</span>
+                        <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
+                            <div class="more-item-content"><span class="item-icon">🔔</span><span>IPA Notifications</span></div>
+                            <span class="notify-status" id="notify-status" style="${isNotifyEnabled ? 'background:#30d158;color:black;' : ''}">${isNotifyEnabled ? 'ON' : 'OFF'}</span>
                         </div>
                     </div>
-
-                    <div class="more-footer">
-                        <p>© 2025 URSA IPA Project</p>
-                    </div>
+                    <div class="more-footer"><p>© 2025 URSA IPA Project</p></div>
                 </div>
             `;
             updateStats();
         } else {
-            currentSection = target;
-            currentCategory = 'All';
-            renderCategoryBar(target);
-            loadApps(target);
+            currentSection = target; currentCategory = 'All';
+            renderCategoryBar(target); loadApps(target);
         }
     });
 });
 
-/**
- * Checks for Deep Links
- */
 async function checkDeepLink() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const appId = urlParams.get('id');
-    
+    const appId = new URLSearchParams(window.location.search).get('id');
     if (appId) {
         try {
-            const colRef = collection(db, "apps");
-            const q = query(colRef, where("bundle_id", "==", appId));
-            const snap = await getDocs(q);
-            
-            if (!snap.empty) {
-                const docSnap = snap.docs[0];
-                openModal(docSnap.data(), docSnap.id);
-            }
-        } catch (e) { console.error("Deep Link check failed:", e); }
+            const snap = await getDocs(query(collection(db, "apps"), where("bundle_id", "==", appId)));
+            if (!snap.empty) openModal(snap.docs[0].data(), snap.docs[0].id);
+        } catch (e) {}
     }
 }
 
-/**
- * Entry Point
- */
 window.addEventListener('DOMContentLoaded', () => {
     renderCategoryBar('games');
     loadApps('games');
