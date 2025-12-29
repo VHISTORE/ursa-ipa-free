@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>URSA IPA</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" href="icons/logoursa.jpeg">
 </head>
 <body>
 
@@ -59,5 +60,17 @@
     </nav>
 
     <script type="module" src="script.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('firebase-messaging-sw.js')
+                .then((registration) => {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                })
+                .catch((err) => {
+                    console.error('Service Worker registration failed:', err);
+                });
+        }
+    </script>
 </body>
 </html>
