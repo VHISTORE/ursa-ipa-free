@@ -147,7 +147,9 @@ function openModal(appData) {
                 <h2>${appData.name}</h2>
                 <p>${appData.bundle_id}</p>
             </div>
-            <button class="share-btn-top" onclick="shareApp('${appData.bundle_id}')" title="Share App">🔗</button>
+            <button class="share-btn-top" onclick="shareApp('${appData.bundle_id}')" title="Share App">
+                <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share">
+            </button>
         </div>
         <div class="modal-stats">
             <div class="stat-item">VERSION<b>${appData.version}</b></div>
