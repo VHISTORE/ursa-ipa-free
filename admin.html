@@ -9,11 +9,19 @@
         /* Исправление для отображения переносов строк и удобства ввода */
         textarea {
             resize: vertical;
-            min-height: 150px; /* Увеличено для длинных списков */
             line-height: 1.5;
             white-space: pre-wrap !important; /* Сохраняет переносы при вводе и отображении */
             font-family: inherit;
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            color: #fff;
+            box-sizing: border-box;
         }
+        #features { min-height: 80px; }
+        #description { min-height: 120px; }
     </style>
 </head>
 <body>
@@ -42,7 +50,8 @@
 
         <section class="admin-section">
             <h3 id="form-title">IPA Editor</h3>
-            <form id="add-app-form" onsubmit="return false;"> <input type="hidden" id="icon_url">
+            <form id="add-app-form" onsubmit="return false;"> 
+                <input type="hidden" id="icon_url">
                 <input type="hidden" id="download_url">
 
                 <div class="form-group">
@@ -110,14 +119,14 @@
                         <input type="text" id="min_ios" required placeholder="15.0">
                     </div>
                     <div class="form-group">
-                        <label>Features</label>
-                        <input type="text" id="features" placeholder="Mod Menu / DLC">
+                        <label>Features (Mod Functions)</label>
+                        <textarea id="features" placeholder="Unlimited Coins&#10;God Mode&#10;..."></textarea>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Description (Mods List)</label>
-                    <textarea id="description" placeholder="Paste your mod list here...&#10;Anti-Cheat&#10;Item Duplication&#10;..."></textarea>
+                    <label>Description</label>
+                    <textarea id="description" placeholder="Product by URSA"></textarea>
                 </div>
 
                 <button type="button" id="manual-submit-btn" class="submit-btn-main" style="width:100%; background:var(--accent); color:white; border:none; padding:18px; border-radius:16px; font-weight:700; font-size:17px; margin-top:10px;">Publish App</button>
@@ -138,25 +147,33 @@
     <script type="module" src="admin.js"></script>
 
     <script>
-        // Специальный фикс для iPhone: запрещаем Enter в инпутах отправлять форму, 
-        // а в textarea разрешаем перенос строки
+        // Блокировка Enter для инпутов и разрешение для textarea (Features и Description)
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                if (e.target.tagName === 'INPUT') {
+                if (e.target.tagName === 'TEXTAREA') {
+                    e.stopPropagation(); 
+                } else if (e.target.tagName === 'INPUT') {
                     e.preventDefault();
                     return false;
                 }
             }
         }, true);
 
-        // Привязываем сохранение к новой кнопке вручную
+        // Привязка сохранения и авто-скролл при нажатии Edit
         document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById('manual-submit-btn');
             const form = document.getElementById('add-app-form');
+            const appList = document.getElementById('admin-app-list');
             
             btn.addEventListener('click', () => {
-                // Инициируем событие submit для admin.js
                 form.dispatchEvent(new Event('submit'));
+            });
+
+            // Слушатель для авто-скролла вверх при нажатии кнопки Edit в списке
+            appList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('edit-btn')) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             });
         });
     </script>
