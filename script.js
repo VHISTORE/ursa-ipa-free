@@ -427,7 +427,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
                             </div>
                             <span class="arrow">›</span>
                         </div>
-                        <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
+                        <div class="more-item-link notify-btn" onclick="window.activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
                             <div class="more-item-content">
                                 <span class="item-icon">🔔</span>
                                 <span>IPA Notifications</span>
