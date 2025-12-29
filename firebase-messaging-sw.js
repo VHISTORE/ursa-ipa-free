@@ -1,6 +1,7 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
+// Инициализация Firebase в Service Worker
 firebase.initializeApp({
     apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
     authDomain: "ursaipa.firebaseapp.com",
@@ -12,36 +13,36 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Фоновая обработка уведомления
+/**
+ * Фоновая обработка сообщений.
+ * Мы оставляем этот блок пустым или только для логирования,
+ * чтобы избежать дублирования уведомлений. 
+ * Браузер сам отобразит уведомление из поля 'notification', присланного сервером.
+ */
 messaging.onBackgroundMessage((payload) => {
-    console.log('Received background message ', payload);
-    const notificationTitle = payload.notification.title;
-    const notificationOptions = {
-        body: payload.notification.body,
-        icon: payload.notification.image || './icons/logoursa.jpeg', // Используем относительный путь для GitHub Pages
-        data: {
-            url: 'https://vhistore.github.io/ursa-ipa-free/' // Ссылка, которую откроет клик
-        }
-    };
-
-    self.registration.showNotification(notificationTitle, notificationOptions);
+    console.log('[sw.js] Received background message:', payload);
 });
 
-// Логика клика по уведомлению: открывает сайт или фокусирует вкладку
+/**
+ * Логика клика по уведомлению: 
+ * Открывает сайт или фокусирует вкладку, если она уже открыта.
+ */
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const urlToOpen = event.notification.data.url;
+
+    // Ссылка на ваш проект
+    const urlToOpen = 'https://vhistore.github.io/ursa-ipa-free/';
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // Если сайт уже открыт, просто переключаемся на него
-            for (var i = 0; i < windowClients.length; i++) {
-                var client = windowClients[i];
+            // Если вкладка с сайтом уже открыта — переключаем на нее фокус
+            for (let i = 0; i < windowClients.length; i++) {
+                let client = windowClients[i];
                 if (client.url === urlToOpen && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Если сайт закрыт — открываем новую вкладку
+            // Если сайт не открыт — открываем новую вкладку
             if (clients.openWindow) {
                 return clients.openWindow(urlToOpen);
             }
