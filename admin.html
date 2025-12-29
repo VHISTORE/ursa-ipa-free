@@ -8,11 +8,15 @@
 </head>
 <body>
     <div id="auth-container" class="admin-container">
-        <header><h1>URSA Admin Access</h1></header>
+        <header>
+            <h1>URSA Admin Access</h1>
+        </header>
         <div class="admin-section" style="text-align: center;">
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Sign in to manage apps.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Please sign in with your Google account.</p>
             <button id="login-btn">Sign in with Google</button>
-            <div style="margin-top: 20px;"><a href="index.html" class="back-link">← Back to Site</a></div>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="index.html" class="back-link">← Back to Site</a>
+            </div>
         </div>
     </div>
 
@@ -38,12 +42,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label>App Icon (Library/Files)</label>
-                    <div class="upload-box" id="icon-upload-area">
+                    <label>App Icon (Photo Library / Files)</label>
+                    <div class="upload-box">
                         <input type="file" id="icon-input" accept="image/*" class="file-input">
                         <div class="upload-ui">
                             <div class="preview-icon" id="icon-preview">📸</div>
-                            <span class="status-text" id="icon-status">Tap to select icon</span>
+                            <span class="status-text" id="icon-status">Tap to upload icon</span>
                             <div class="progress-bar"><div id="icon-progress"></div></div>
                         </div>
                     </div>
@@ -51,7 +55,7 @@
 
                 <div class="form-group">
                     <label>IPA File (System Files)</label>
-                    <div class="upload-box" id="ipa-upload-area">
+                    <div class="upload-box">
                         <input type="file" id="ipa-input" accept=".ipa" class="file-input">
                         <div class="upload-ui">
                             <div class="preview-icon">📦</div>
@@ -78,31 +82,51 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Version</label>
-                        <input type="text" id="version" required placeholder="1.0">
+                        <input type="text" id="version" required placeholder="1.20.1">
                     </div>
                     <div class="form-group">
                         <label>Size</label>
-                        <input type="text" id="size" required placeholder="100 MB">
+                        <input type="text" id="size" required placeholder="150 MB">
                     </div>
                 </div>
 
-                <div class="form-group"><label>Bundle ID</label><input type="text" id="bundle_id" required></div>
-
-                <div class="form-row">
-                    <div class="form-group"><label>Min iOS</label><input type="text" id="min_ios" required placeholder="15.0"></div>
-                    <div class="form-group"><label>Features</label><input type="text" id="features"></div>
+                <div class="form-group">
+                    <label>Bundle ID</label>
+                    <input type="text" id="bundle_id" required placeholder="com.mojang.minecraftpe">
                 </div>
 
-                <div class="form-group"><label>Description</label><textarea id="description" rows="3"></textarea></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Min iOS</label>
+                        <input type="text" id="min_ios" required placeholder="15.0">
+                    </div>
+                    <div class="form-group">
+                        <label>Features</label>
+                        <input type="text" id="features" placeholder="Mod Menu / DLC">
+                    </div>
+                </div>
 
-                <button type="submit" id="submit-btn">Publish App</button>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" rows="3" placeholder="Describe the application..."></textarea>
+                </div>
+
+                <button type="submit" id="submit-btn" disabled>Upload files first...</button>
             </form>
         </section>
 
         <section class="admin-section">
-            <h3>Inventory</h3>
-            <div id="admin-app-list" class="admin-list"></div>
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Inventory</h3>
+                <span class="refresh-hint" style="font-size: 11px; opacity: 0.5;">Auto-updates from Firestore</span>
+            </div>
+            <div id="admin-app-list" class="admin-list">
+                </div>
         </section>
+
+        <footer style="text-align: center; opacity: 0.3; font-size: 10px; padding: 20px 0;">
+            URSA IPA Management System • 2025
+        </footer>
     </div>
 
     <script type="module" src="admin.js"></script>
