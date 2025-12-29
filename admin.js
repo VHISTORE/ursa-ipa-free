@@ -18,7 +18,7 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 // Данные Gofile и Admin
-const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM";
+const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM"; //
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 
 let editMode = false;
@@ -61,7 +61,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ GOFILE ---
+// --- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ GOFILE (API МАЙ 2025) ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -69,20 +69,17 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
 
     try {
         status.style.color = "var(--text-secondary)";
-        status.textContent = "🚀 Fetching server...";
+        status.textContent = "🚀 Starting upload...";
         
-        // Исправленный эндпоинт получения сервера
-        const serverRes = await fetch('https://api.gofile.io/contents/getUploadServer');
-        const serverData = await serverRes.json();
-        const server = serverData.data.server;
-
         const formData = new FormData();
-        formData.append('file', file);
-        formData.append('token', GOFILE_TOKEN);
+        formData.append('file', file); //
 
         const xhr = new XMLHttpRequest();
-        // Исправленный эндпоинт загрузки
-        xhr.open('POST', `https://${server}.gofile.io/contents/uploadfile`);
+        // Используем глобальный эндпоинт согласно документации
+        xhr.open('POST', 'https://upload.gofile.io/uploadfile');
+
+        // Авторизация через Header Bearer Token
+        xhr.setRequestHeader('Authorization', `Bearer ${GOFILE_TOKEN}`);
 
         xhr.upload.onprogress = (e) => {
             const percent = (e.loaded / e.total) * 100;
@@ -93,7 +90,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         xhr.onload = function() {
             try {
                 const res = JSON.parse(xhr.responseText);
-                if (res.status === "ok") {
+                if (res.status === "ok") { //
                     hiddenInput.value = res.data.downloadPage; 
                     status.textContent = "✅ File Ready!";
                     status.style.color = "#30d158";
@@ -178,7 +175,6 @@ async function loadInventory() {
 function startEdit(id, appData) {
     currentEditId = id;
     editMode = true;
-    // При редактировании считаем, что файлы уже есть в базе
     isIconUploaded = true;
     isIpaUploaded = true;
 
