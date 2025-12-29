@@ -381,7 +381,6 @@ body::after {
     line-height: 1.2; 
 }
 
-/* RECTANGULAR SHARE BUTTON */
 .share-btn-rect {
     display: flex;
     align-items: center;
@@ -518,3 +517,120 @@ body::after {
 }
 
 .nav-item.active .nav-label { color: #ffffff; }
+
+/* --- NEW: MORE PAGE STYLES --- */
+.more-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 5px;
+    gap: 25px;
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.more-header-brand {
+    text-align: center;
+}
+
+.more-logo {
+    width: 100px;
+    height: 100px;
+    border-radius: 22px;
+    margin-bottom: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.1);
+    object-fit: cover;
+}
+
+.more-header-brand h2 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+}
+
+.more-group {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.stats-card {
+    display: flex;
+    padding: 20px;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.stat-box {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--accent-blue);
+    text-shadow: 0 0 15px rgba(0, 122, 255, 0.3);
+}
+
+.stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.5;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.more-item-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    text-decoration: none;
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.more-item-link:last-child { border-bottom: none; }
+.more-item-link:active { background: rgba(255, 255, 255, 0.1); }
+
+.more-item-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-weight: 600;
+}
+
+.item-icon { font-size: 20px; }
+
+.arrow {
+    font-size: 22px;
+    opacity: 0.2;
+    font-weight: 300;
+}
+
+.more-footer {
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.4;
+    line-height: 1.8;
+    margin-bottom: 40px;
+}
