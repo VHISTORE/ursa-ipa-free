@@ -47,7 +47,6 @@ window.activateNotifications = async function() {
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
-    // Show Instruction Modal for iOS users not in PWA mode
     if (isIOS && !isStandalone) {
         showiOSInstructions();
         return;
@@ -73,11 +72,9 @@ window.activateNotifications = async function() {
             if (token) {
                 console.log("FCM Token:", token);
 
-                // Subscribe to 'all' topic via Cloud Function
                 try {
                     const subscribe = httpsCallable(functions, 'subscribeToTopic');
                     await subscribe({ token: token });
-                    console.log("Successfully subscribed to topic: all");
                 } catch (subErr) {
                     console.error("Cloud Function subscription error:", subErr);
                 }
@@ -238,14 +235,6 @@ async function openModal(appData, docId) {
     const modalBody = document.getElementById('modal-body');
     const displayViews = (appData.views || 0) + 1;
 
-    // Logic: ensure "Product by URSA" is at the end of the description
-    let descContent = appData.description || "";
-    if (descContent && !descContent.includes("Product by URSA")) {
-        descContent += "\n\nProduct by URSA";
-    } else if (!descContent) {
-        descContent = "Product by URSA";
-    }
-
     modalBody.innerHTML = `
         <div class="modal-header-info">
             <img src="${appData.icon_url}" class="modal-icon-big" onerror="this.src='https://via.placeholder.com/60'">
@@ -268,7 +257,7 @@ async function openModal(appData, docId) {
                 <b style="white-space: pre-wrap; font-weight: 700; margin-top: 5px; display: block; color: white; text-transform: none; font-size: 14px;">${appData.features || "Original"}</b>
             </div>
         </div>
-        <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${descContent}</div>
+        <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${appData.description || "No description available yet."}</div>
         <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
     `;
     overlay.classList.add('active');
