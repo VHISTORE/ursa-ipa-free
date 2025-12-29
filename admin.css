@@ -64,25 +64,25 @@ h3 { font-size: 18px; margin: 25px 0 15px; color: var(--accent); text-transform:
     margin-bottom: 25px;
 }
 
-/* --- ЗОНА ЗАГРУЗКИ (СПЕЦИФИКАЦИЯ ДЛЯ iOS/FILES) --- */
+/* --- ИНТЕРАКТИВНЫЕ БЛОКИ ЗАГРУЗКИ (Icon & IPA) --- */
 .upload-box {
     position: relative;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--input-bg);
     border: 2px dashed var(--border);
     border-radius: 20px;
     padding: 20px;
     margin-bottom: 20px;
     text-align: center;
     overflow: hidden;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .upload-box:active {
     border-color: var(--accent);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
 }
 
-/* Скрытый инпут поверх всего блока для корректного клика на iPhone */
+/* Скрытый инпут растягивается на весь блок для клика */
 .file-input {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -99,18 +99,18 @@ h3 { font-size: 18px; margin: 25px 0 15px; color: var(--accent); text-transform:
 }
 
 .preview-icon {
-    font-size: 40px;
+    font-size: 36px;
     width: 66px; height: 66px;
     display: flex; align-items: center; justify-content: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 16px;
     margin-bottom: 5px;
+    overflow: hidden;
 }
 
 .preview-icon img {
     width: 100%; height: 100%;
     object-fit: cover;
-    border-radius: 14px;
 }
 
 .status-text {
@@ -119,7 +119,7 @@ h3 { font-size: 18px; margin: 25px 0 15px; color: var(--accent); text-transform:
     color: var(--text-secondary);
 }
 
-/* Прогресс-бары */
+/* Прогресс-бары внутри блоков загрузки */
 .progress-bar {
     width: 100%;
     height: 6px;
@@ -168,7 +168,7 @@ input:focus, select:focus, textarea:focus {
     outline: none; 
 }
 
-/* --- КНОПКИ --- */
+/* --- КНОПКИ ДЕЙСТВИЯ --- */
 #submit-btn, #login-btn {
     width: 100%;
     background: var(--accent);
@@ -180,13 +180,13 @@ input:focus, select:focus, textarea:focus {
     font-weight: 700;
     cursor: pointer;
     margin-top: 10px;
-    transition: transform 0.1s, opacity 0.2s, background 0.3s;
+    transition: transform 0.1s, opacity 0.2s;
 }
 
 #submit-btn:active, #login-btn:active { transform: scale(0.98); opacity: 0.9; }
 #submit-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #3a3a3c !important; }
 
-/* --- СПИСОК ИНВЕНТАРЯ --- */
+/* --- СПИСОК ИНВЕНТАРЯ (Manage) --- */
 .admin-list { display: flex; flex-direction: column; gap: 12px; }
 
 .admin-item {
@@ -200,7 +200,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .admin-item-info { display: flex; align-items: center; gap: 12px; }
-.admin-item-info img { border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.admin-item-info img { border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); object-fit: cover; }
 .admin-item-info span { font-size: 15px; font-weight: 600; }
 
 .admin-item-actions {
@@ -223,7 +223,6 @@ input:focus, select:focus, textarea:focus {
     color: var(--success);
     border-color: rgba(48, 209, 88, 0.2);
 }
-
 .edit-btn:hover { background: var(--success); color: #fff; }
 
 .del-btn {
@@ -231,7 +230,6 @@ input:focus, select:focus, textarea:focus {
     color: var(--error);
     border-color: rgba(255, 69, 58, 0.2);
 }
-
 .del-btn:hover { background: var(--error); color: #fff; }
 
 /* --- АДАПТИВНОСТЬ --- */
@@ -249,15 +247,5 @@ input:focus, select:focus, textarea:focus {
     .admin-item-actions {
         width: 100%;
         justify-content: flex-end;
-    }
-}
-
-@media (max-width: 400px) {
-    .admin-item-actions {
-        justify-content: space-between;
-    }
-    .edit-btn, .del-btn {
-        flex: 1;
-        text-align: center;
     }
 }
