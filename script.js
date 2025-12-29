@@ -20,7 +20,31 @@ let currentSection = 'games';
 let currentCategory = 'All';
 
 /**
- * Converts Firebase Timestamp to an English date string (ShortMonth DD, YYYY)
+ * Helper: Share functionality (Deep Linking)
+ */
+window.shareApp = (bundleId) => {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?id=${bundleId}`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'URSA IPA',
+            text: `Check out this app on URSA IPA!`,
+            url: shareUrl,
+        }).catch(console.error);
+    } else {
+        // Fallback: Copy to clipboard
+        const el = document.createElement('textarea');
+        el.value = shareUrl;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        alert('Link copied to clipboard!');
+    }
+};
+
+/**
+ * Converts Firebase Timestamp to an English date string
  */
 function formatDate(timestamp) {
     if (!timestamp) return "Unknown";
@@ -33,7 +57,7 @@ function formatDate(timestamp) {
 }
 
 /**
- * Creates an application card element
+ * Creates an application card element used in both main list and search
  */
 function createAppCard(appData) {
     const card = document.createElement('div');
@@ -51,7 +75,7 @@ function createAppCard(appData) {
     `;
 
     card.addEventListener('click', () => {
-        // If search is open, close it before showing details
+        // If search overlay is open, close it before showing details
         if (document.getElementById('search-overlay').classList.contains('active')) {
             toggleSearch(false);
         }
@@ -70,7 +94,7 @@ function renderAppCard(appData) {
 }
 
 /**
- * Generates category buttons based on available data in Firestore
+ * Generates category buttons dynamically based on Firestore data
  */
 async function renderCategoryBar(sectionName) {
     const bar = document.getElementById('category-bar');
@@ -105,12 +129,12 @@ async function renderCategoryBar(sectionName) {
             bar.appendChild(btn);
         });
     } catch (e) {
-        console.error("Category Error:", e);
+        console.error("Category Bar Error:", e);
     }
 }
 
 /**
- * Opens modal with full details
+ * Opens modal with full details and updates URL for sharing
  */
 function openModal(appData) {
     const overlay = document.getElementById('modal-overlay');
@@ -123,6 +147,7 @@ function openModal(appData) {
                 <h2>${appData.name}</h2>
                 <p>${appData.bundle_id}</p>
             </div>
+            <button class="share-btn-top" onclick="shareApp('${appData.bundle_id}')" title="Share App">🔗</button>
         </div>
         <div class="modal-stats">
             <div class="stat-item">VERSION<b>${appData.version}</b></div>
@@ -131,17 +156,53 @@ function openModal(appData) {
             <div class="stat-item">VIEWS<b>${appData.views || 0}</b></div>
             <div class="stat-item" style="grid-column: span 2;">FEATURES<b>${appData.features || "Original"}</b></div>
         </div>
-        <div class="modal-desc">${appData.description || "No description available."}</div>
+        <div class="modal-desc">${appData.description || "No description available yet."}</div>
         <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
     `;
     overlay.classList.add('active');
+
+    // Update URL parameter without reloading the page
+    const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
 }
 
-const closeModal = () => document.getElementById('modal-overlay').classList.remove('active');
+/**
+ * Closes the modal and cleans up the URL
+ */
+const closeModal = () => {
+    document.getElementById('modal-overlay').classList.remove('active');
+    // Clear URL parameter on close
+    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+    window.history.pushState({ path: cleanUrl }, '', cleanUrl);
+};
+
+// Modal Close Listeners
 document.getElementById('close-modal').addEventListener('click', closeModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target.id === 'modal-overlay') closeModal();
 });
+
+/**
+ * Checks for Deep Links on page load
+ */
+async function checkDeepLink() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const appId = urlParams.get('id');
+    
+    if (appId) {
+        try {
+            const colRef = collection(db, "apps");
+            const q = query(colRef, where("bundle_id", "==", appId));
+            const snap = await getDocs(q);
+            
+            if (!snap.empty) {
+                openModal(snap.docs[0].data());
+            }
+        } catch (e) {
+            console.error("Deep Link check failed:", e);
+        }
+    }
+}
 
 /**
  * Fetches apps from Firebase with section and category filtering
@@ -230,10 +291,11 @@ async function performSearch(term) {
             searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">No results found</div>';
         }
     } catch (e) {
-        console.error(e);
+        console.error("Search failed:", e);
     }
 }
 
+// Search Input Listeners
 searchInput.addEventListener('input', (e) => performSearch(e.target.value));
 
 clearSearchBtn.addEventListener('click', () => {
@@ -254,7 +316,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
 
         if (target === 'search') {
             toggleSearch(true);
-            return; // Don't switch main content when search is triggered
+            return; 
         }
 
         const contentArea = document.getElementById('content');
@@ -278,9 +340,10 @@ document.querySelectorAll('.nav-item').forEach(button => {
 });
 
 /**
- * Application entry point
+ * Entry Point: Start Application
  */
 window.addEventListener('DOMContentLoaded', () => {
     renderCategoryBar('games');
     loadApps('games');
+    checkDeepLink();
 });
