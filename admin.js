@@ -53,7 +53,7 @@ function updateSubmitButton() {
         submitBtn.textContent = editMode ? "Update Application" : "Publish App";
     } else {
         submitBtn.disabled = true;
-        submitBtn.textContent = "Upload files first...";
+        submitBtn.textContent = "Waiting for DirectLinks...";
     }
 }
 
@@ -68,21 +68,22 @@ async function createDirectLink(contentId) {
             },
             body: JSON.stringify({}) 
         });
-        const result = await response.json();
         
-        // Проверка: есть ли в ответе массив ссылок
+        const result = await response.json();
+        console.log("DirectLink API Response:", result);
+
         if (result.status === "ok" && result.data && result.data.directLinks && result.data.directLinks.length > 0) {
-            return result.data.directLinks[0].link;
+            // Пытаемся взять поле 'link', если его нет - поле 'url'
+            return result.data.directLinks[0].link || result.data.directLinks[0].url;
         }
-        console.warn("DirectLink не получен, используем обычную ссылку.");
         return null;
     } catch (e) {
-        console.error("DirectLink API Error:", e);
+        console.error("DirectLink Error:", e);
         return null;
     }
 }
 
-// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА НА GOFILE ---
+// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -109,26 +110,31 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔗 Generating Link...";
+                    status.textContent = "🔗 Processing Direct Link...";
+                    const contentId = res.data.id;
                     
-                    // Попытка создать прямую ссылку (Premium опция)
-                    const directUrl = await createDirectLink(res.data.id);
-                    
-                    // Если прямая ссылка не создалась, берем ссылку на страницу скачивания
-                    const finalUrl = directUrl || res.data.downloadPage;
-                    
-                    hiddenInput.value = finalUrl; 
-                    status.textContent = directUrl ? "✅ Direct Link Ready!" : "✅ Link Ready!";
-                    status.style.color = "#30d158";
-                    progress.style.background = "#30d158";
-                    
-                    if (hiddenInputId === 'icon_url') {
-                        isIconUploaded = true;
-                        document.getElementById('icon-preview').innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+                    // Ждем 1.5 сек, чтобы Gofile проиндексировал файл (решает ошибку undefined)
+                    await new Promise(r => setTimeout(r, 1500));
+
+                    const directUrl = await createDirectLink(contentId);
+
+                    if (directUrl) {
+                        hiddenInput.value = directUrl; 
+                        status.textContent = "✅ Direct Link Ready!";
+                        status.style.color = "#30d158";
+                        progress.style.background = "#30d158";
+
+                        if (hiddenInputId === 'icon_url') {
+                            isIconUploaded = true;
+                            document.getElementById('icon-preview').innerHTML = `<img src="${directUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+                        } else {
+                            isIpaUploaded = true;
+                        }
+                        updateSubmitButton();
                     } else {
-                        isIpaUploaded = true;
+                        status.textContent = "❌ DirectLink failed";
+                        status.style.color = "#ff453a";
                     }
-                    updateSubmitButton();
                 } else {
                     status.textContent = "❌ Error: " + res.status;
                 }
@@ -152,10 +158,10 @@ document.getElementById('ipa-input').onchange = (e) => {
 
 // --- ИНВЕНТАРЬ ---
 async function loadInventory() {
-    adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
+    const list = document.getElementById('admin-app-list');
     const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
     const snap = await getDocs(q);
-    adminAppList.innerHTML = '';
+    list.innerHTML = '';
 
     snap.forEach((appDoc) => {
         const data = appDoc.data();
@@ -171,7 +177,7 @@ async function loadInventory() {
                 <button class="del-btn" data-id="${appDoc.id}">Delete</button>
             </div>
         `;
-        adminAppList.appendChild(div);
+        list.appendChild(div);
     });
 
     document.querySelectorAll('.del-btn').forEach(btn => {
@@ -214,6 +220,7 @@ function startEdit(id, appData) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// --- ОТПРАВКА В Базу ---
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
