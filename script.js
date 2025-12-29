@@ -134,7 +134,7 @@ async function renderCategoryBar(sectionName) {
 }
 
 /**
- * Opens modal with full details and updates URL for sharing
+ * Opens modal with the RECTANGULAR share button positioned between Name and Bundle ID
  */
 function openModal(appData) {
     const overlay = document.getElementById('modal-overlay');
@@ -145,11 +145,14 @@ function openModal(appData) {
             <img src="${appData.icon_url}" class="modal-icon-big" onerror="this.src='https://via.placeholder.com/60'">
             <div class="modal-title-wrap">
                 <h2>${appData.name}</h2>
-                <p>${appData.bundle_id}</p>
+                
+                <button class="share-btn-rect" onclick="shareApp('${appData.bundle_id}')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share">
+                    <span>SHARE</span>
+                </button>
+
+                <p class="bundle-id-text">${appData.bundle_id}</p>
             </div>
-            <button class="share-btn-top" onclick="shareApp('${appData.bundle_id}')" title="Share App">
-                <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share">
-            </button>
         </div>
         <div class="modal-stats">
             <div class="stat-item">VERSION<b>${appData.version}</b></div>
