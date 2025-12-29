@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap');
 
 :root {
-    --header-bg: rgba(0, 0, 0, 0.7);
+    --header-bg: rgba(0, 0, 0, 0.6); 
     --text-color: #ffffff;
     --badge-color: #30d158;
 }
@@ -24,7 +24,7 @@ body {
     position: relative;
 }
 
-/* Анимированный фон (без изменений) */
+/* Анимированный фон */
 body::before {
     content: "";
     position: fixed;
@@ -50,19 +50,19 @@ body::after {
     to { transform: rotate(360deg); }
 }
 
-/* --- ШАПКА --- */
+/* --- КОМПАКТНАЯ ШАПКА --- */
 .main-header {
     position: sticky;
     top: 0;
     z-index: 1000;
     width: 100%;
-    padding: 15px 20px; /* Компактная высота */
+    padding: 8px 20px; /* Еще меньше высота */
     background: var(--header-bg);
-    backdrop-filter: blur(25px) saturate(200%);
-    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
     display: flex;
-    justify-content: center; /* Центровка по горизонтали */
+    justify-content: center;
     align-items: center;
 }
 
@@ -73,43 +73,55 @@ body::after {
     justify-content: center;
 }
 
+/* --- ВЕРНУЛ ТОТ САМЫЙ СТИЛЬ + РАЗМЕР --- */
 .main-header h1 {
     font-family: 'Montserrat', sans-serif;
-    font-size: 26px; /* Увеличил размер */
+    font-size: 26px; /* Размер больше, как ты просил */
     font-weight: 900;
     letter-spacing: 2px;
     text-transform: uppercase;
     margin: 0;
-    background: linear-gradient(to bottom, #fff, #bbb);
+    
+    /* Тот самый градиент с эффектом стали */
+    background: linear-gradient(
+        to bottom, 
+        #ffffff 0%, 
+        #ffffff 45%, 
+        #a1a1a1 50%, 
+        #ffffff 55%, 
+        #ffffff 100%
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
-/* --- АНИМИРОВАННЫЙ BADGE --- */
+/* --- БЭЙДЖ СБОКУ + МИГАНИЕ --- */
 .badge {
-    position: absolute; /* Убираем влияние на центровку h1 */
-    right: -55px; /* Смещаем правее заголовка */
+    position: absolute;
+    right: -55px; /* Вынесен вправо, чтобы не мешать центровке */
     font-family: -apple-system, sans-serif;
     font-size: 9px;
     font-weight: 900;
     color: var(--badge-color);
-    border: 1.5px solid var(--badge-color);
-    padding: 2px 5px;
-    border-radius: 6px;
+    border: 1px solid var(--badge-color);
+    padding: 1px 5px;
+    border-radius: 5px;
     background: rgba(48, 209, 88, 0.1);
     text-transform: uppercase;
+    letter-spacing: 0px;
+    
     /* Анимация мигания */
-    animation: blink 2s ease-in-out infinite;
-    letter-spacing: 0.5px;
+    animation: blinkFree 1.5s ease-in-out infinite;
 }
 
-@keyframes blink {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.3; transform: scale(0.95); }
+@keyframes blinkFree {
+    0%, 100% { opacity: 1; filter: brightness(1.2); }
+    50% { opacity: 0.2; filter: brightness(0.8); }
 }
 
 #content {
     position: relative;
     z-index: 1;
-    padding: 20px;
+    padding: 15px;
 }
