@@ -8,15 +8,11 @@
 </head>
 <body>
     <div id="auth-container" class="admin-container">
-        <header>
-            <h1>URSA Admin Access</h1>
-        </header>
+        <header><h1>URSA Admin Access</h1></header>
         <div class="admin-section" style="text-align: center;">
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Sign in to manage apps and uploads.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Sign in to manage apps.</p>
             <button id="login-btn">Sign in with Google</button>
-            <div style="margin-top: 20px;">
-                <a href="index.html" class="back-link">← Back to Site</a>
-            </div>
+            <div style="margin-top: 20px;"><a href="index.html" class="back-link">← Back to Site</a></div>
         </div>
     </div>
 
@@ -31,26 +27,40 @@
         </header>
 
         <section class="admin-section">
-            <h3>Quick Upload (Gofile)</h3>
-            <div class="upload-zone">
-                <input type="file" id="file-input" accept=".ipa,.zip">
-                <div id="upload-status">Select .ipa file to start upload</div>
-                <div class="progress-container">
-                    <div id="progress-bar"></div>
-                </div>
-            </div>
-        </section>
-
-        <section class="admin-section">
             <h3 id="form-title">Editor</h3>
             <form id="add-app-form">
+                <input type="hidden" id="icon_url">
                 <input type="hidden" id="download_url">
-                
+
                 <div class="form-group">
                     <label>App Name</label>
                     <input type="text" id="name" required placeholder="e.g. Minecraft">
                 </div>
-                
+
+                <div class="form-group">
+                    <label>App Icon (Library/Files)</label>
+                    <div class="upload-box" id="icon-upload-area">
+                        <input type="file" id="icon-input" accept="image/*" class="file-input">
+                        <div class="upload-ui">
+                            <div class="preview-icon" id="icon-preview">📸</div>
+                            <span class="status-text" id="icon-status">Tap to select icon</span>
+                            <div class="progress-bar"><div id="icon-progress"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>IPA File (System Files)</label>
+                    <div class="upload-box" id="ipa-upload-area">
+                        <input type="file" id="ipa-input" accept=".ipa" class="file-input">
+                        <div class="upload-ui">
+                            <div class="preview-icon">📦</div>
+                            <span class="status-text" id="ipa-status">Tap to select .ipa</span>
+                            <div class="progress-bar"><div id="ipa-progress"></div></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Section</label>
@@ -61,7 +71,7 @@
                     </div>
                     <div class="form-group">
                         <label>Category</label>
-                        <input type="text" id="category" required placeholder="e.g. Action">
+                        <input type="text" id="category" required placeholder="Action">
                     </div>
                 </div>
 
@@ -76,79 +86,25 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Bundle ID</label>
-                    <input type="text" id="bundle_id" required placeholder="com.example.app">
-                </div>
-
-                <div class="form-group">
-                    <label>Icon URL</label>
-                    <input type="url" id="icon_url" required placeholder="https://image-link.png">
-                </div>
-
-                <div class="form-group">
-                    <label>IPA Direct Link (Manual)</label>
-                    <input type="url" id="manual_url_display" placeholder="Auto-filled after upload or enter manually">
-                </div>
+                <div class="form-group"><label>Bundle ID</label><input type="text" id="bundle_id" required></div>
 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Min iOS</label>
-                        <input type="text" id="min_ios" required placeholder="15.0">
-                    </div>
-                    <div class="form-group">
-                        <label>Features</label>
-                        <input type="text" id="features" placeholder="Mod Menu / Premium">
-                    </div>
+                    <div class="form-group"><label>Min iOS</label><input type="text" id="min_ios" required placeholder="15.0"></div>
+                    <div class="form-group"><label>Features</label><input type="text" id="features"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="description" rows="3" placeholder="Enter app details..."></textarea>
-                </div>
+                <div class="form-group"><label>Description</label><textarea id="description" rows="3"></textarea></div>
 
                 <button type="submit" id="submit-btn">Publish App</button>
             </form>
         </section>
 
         <section class="admin-section">
-            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Inventory</h3>
-                <span class="refresh-hint" style="font-size: 11px; opacity: 0.5;">Click "Edit" to load into Editor</span>
-            </div>
-            <div id="admin-app-list" class="admin-list">
-                </div>
+            <h3>Inventory</h3>
+            <div id="admin-app-list" class="admin-list"></div>
         </section>
-
-        <footer class="admin-footer" style="text-align: center; opacity: 0.3; font-size: 10px; margin-top: 20px; padding-bottom: 20px;">
-            URSA IPA Management System • 2025
-        </footer>
     </div>
 
     <script type="module" src="admin.js"></script>
-
-    <script>
-        const manualInput = document.getElementById('manual_url_display');
-        const hiddenInput = document.getElementById('download_url');
-
-        manualInput.addEventListener('input', function(e) {
-            hiddenInput.value = e.target.value;
-        });
-
-        // Наблюдатель за скрытым полем (чтобы обновлять визуальное при авто-загрузке)
-        const observer = new MutationObserver(() => {
-            manualInput.value = hiddenInput.value;
-        });
-        
-        // Для отслеживания изменений атрибута value в JS
-        const originalValue = hiddenInput.value;
-        Object.defineProperty(hiddenInput, 'value', {
-            get: function() { return this.getAttribute('value'); },
-            set: function(val) {
-                this.setAttribute('value', val);
-                manualInput.value = val;
-            }
-        });
-    </script>
 </body>
 </html>
