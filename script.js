@@ -1,9 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 1. Конфигурация Firebase
+// 1. Конфигурация Firebase (ЗАМЕНИ НА СВОИ ДАННЫЕ)
 const firebaseConfig = {
-    apiKey: "ТВОЙ_API_KEY",
+    apiKey: "AIzaSy...", 
     authDomain: "ursa-ipa.firebaseapp.com",
     projectId: "ursa-ipa",
     storageBucket: "ursa-ipa.appspot.com",
@@ -18,10 +18,11 @@ const db = getFirestore(app);
 // 2. Функция для отрисовки карточки
 function renderAppCard(appData) {
     const appList = document.getElementById('app-list');
+    if (!appList) return;
+
     const card = document.createElement('div');
     card.className = 'app-card';
     
-    // Используем опциональную цепочку и значения по умолчанию
     const name = appData.name || 'Unknown App';
     const version = appData.version || '0.0';
     const size = appData.size || '?? MB';
@@ -41,41 +42,47 @@ function renderAppCard(appData) {
     appList.appendChild(card);
 }
 
-// 3. Функция загрузки данных (Исправленный путь под твою структуру)
+// 3. Функция загрузки данных
 async function loadApps(sectionName) {
     const appList = document.getElementById('app-list');
+    if (!appList) return;
+    
     appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5; font-size:14px;">Загрузка...</div>';
 
-    try {
-        // Указываем путь к твоей вложенной коллекции "apps/apps/apps"
-        // Если переделаешь базу в плоскую структуру, просто замени обратно на "apps"
-        const colRef = collection(db, "apps", "apps", "apps");
-        
-        const q = query(
-            colRef, 
-            where("section", "==", sectionName),
-            orderBy("upload_date", "desc")
-        );
-        
-        const querySnapshot = await getDocs(q);
-        appList.innerHTML = ''; 
+    // Пробуем два пути: вложенный (как на твоих скринах) и обычный
+    const paths = [
+        ["apps", "apps", "apps"], // Путь 'матрешка'
+        ["apps"]                  // Обычный путь
+    ];
 
-        if (querySnapshot.empty) {
-            appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">Ничего не найдено</div>';
-            return;
+    for (const path of paths) {
+        try {
+            const colRef = collection(db, ...path);
+            const q = query(
+                colRef, 
+                where("section", "==", sectionName),
+                orderBy("upload_date", "desc")
+            );
+            
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                appList.innerHTML = ''; 
+                querySnapshot.forEach((doc) => renderAppCard(doc.data()));
+                return; // Если данные найдены, выходим из цикла
+            }
+        } catch (e) {
+            console.warn(`Путь ${path.join('/')} не сработал:`, e.message);
+            // Если это ошибка индекса, она будет в консоли со ссылкой
+            if (e.code === 'failed-precondition') {
+                appList.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; opacity:0.7;">Нужно создать индекс в консоли Firebase (см. Console F12)</div>';
+                return;
+            }
         }
-
-        querySnapshot.forEach((doc) => {
-            renderAppCard(doc.data());
-        });
-    } catch (e) {
-        console.error("Firebase Error:", e);
-        // Если ошибка Permission Denied — проверь правила в консоли
-        appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">
-            Ошибка доступа. Проверьте путь к базе или правила.<br>
-            <small style="font-size:10px; color:red;">${e.code}</small>
-        </div>`;
     }
+
+    // Если прошли все пути и ничего не нашли
+    appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">Ничего не найдено</div>';
 }
 
 // 4. Навигация
@@ -89,16 +96,19 @@ document.querySelectorAll('.nav-item').forEach(button => {
         if (target === 'games' || target === 'apps') {
             loadApps(target);
         } else {
-            document.getElementById('app-list').innerHTML = `
-                <div style="text-align:center; padding:50px; opacity:0.5;">
-                    Раздел ${target} в разработке
-                </div>`;
+            const appList = document.getElementById('app-list');
+            if (appList) {
+                appList.innerHTML = `
+                    <div style="text-align:center; padding:50px; opacity:0.5;">
+                        Раздел ${target.toUpperCase()} в разработке
+                    </div>`;
+            }
         }
     });
 });
 
 // 5. Инициализация при старте
 window.addEventListener('DOMContentLoaded', () => {
-    // Небольшая задержка, чтобы Firebase успел проинициализироваться
+    // Ждем полсекунды для уверенности
     setTimeout(() => loadApps('games'), 500);
 });
