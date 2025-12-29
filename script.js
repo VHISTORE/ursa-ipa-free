@@ -33,12 +33,9 @@ function formatDate(timestamp) {
 }
 
 /**
- * Renders an application card in the list
+ * Creates an application card element
  */
-function renderAppCard(appData) {
-    const appList = document.getElementById('app-list');
-    if (!appList) return;
-
+function createAppCard(appData) {
     const card = document.createElement('div');
     card.className = 'app-card';
     const dateStr = formatDate(appData.upload_date);
@@ -53,8 +50,23 @@ function renderAppCard(appData) {
         <button class="download-btn">GET</button>
     `;
 
-    card.addEventListener('click', () => openModal(appData));
-    appList.appendChild(card);
+    card.addEventListener('click', () => {
+        // If search is open, close it before showing details
+        if (document.getElementById('search-overlay').classList.contains('active')) {
+            toggleSearch(false);
+        }
+        openModal(appData);
+    });
+    return card;
+}
+
+/**
+ * Renders the main app list
+ */
+function renderAppCard(appData) {
+    const appList = document.getElementById('app-list');
+    if (!appList) return;
+    appList.appendChild(createAppCard(appData));
 }
 
 /**
@@ -84,7 +96,7 @@ async function renderCategoryBar(sectionName) {
             btn.textContent = cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
             
             btn.onclick = (e) => {
-                e.stopPropagation(); // Prevents modal from opening
+                e.stopPropagation();
                 currentCategory = cat;
                 document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -119,7 +131,7 @@ function openModal(appData) {
             <div class="stat-item">VIEWS<b>${appData.views || 0}</b></div>
             <div class="stat-item" style="grid-column: span 2;">FEATURES<b>${appData.features || "Original"}</b></div>
         </div>
-        <div class="modal-desc">${appData.description || "Description coming soon."}</div>
+        <div class="modal-desc">${appData.description || "No description available."}</div>
         <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
     `;
     overlay.classList.add('active');
@@ -173,15 +185,81 @@ async function loadApps(sectionName, category = 'All') {
     }
 }
 
+// --- SEARCH LOGIC ---
+const searchOverlay = document.getElementById('search-overlay');
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+const clearSearchBtn = document.getElementById('clear-search');
+
+function toggleSearch(show) {
+    if (show) {
+        searchOverlay.classList.add('active');
+        searchInput.focus();
+    } else {
+        searchOverlay.classList.remove('active');
+        searchInput.value = '';
+        searchResults.innerHTML = '';
+        clearSearchBtn.style.display = 'none';
+    }
+}
+
+async function performSearch(term) {
+    if (term.length < 2) {
+        searchResults.innerHTML = '';
+        clearSearchBtn.style.display = 'none';
+        return;
+    }
+
+    clearSearchBtn.style.display = 'block';
+    searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">Searching...</div>';
+
+    try {
+        const snap = await getDocs(collection(db, "apps"));
+        searchResults.innerHTML = '';
+        let found = false;
+
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (data.name.toLowerCase().includes(term.toLowerCase())) {
+                found = true;
+                searchResults.appendChild(createAppCard(data));
+            }
+        });
+
+        if (!found) {
+            searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">No results found</div>';
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+searchInput.addEventListener('input', (e) => performSearch(e.target.value));
+
+clearSearchBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    searchResults.innerHTML = '';
+    clearSearchBtn.style.display = 'none';
+    searchInput.focus();
+});
+
+document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
+
 /**
  * Bottom Navigation logic
  */
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
+        const target = button.getAttribute('data-target');
+
+        if (target === 'search') {
+            toggleSearch(true);
+            return; // Don't switch main content when search is triggered
+        }
+
         const contentArea = document.getElementById('content');
         if (contentArea) contentArea.scrollTo({ top: 0, behavior: 'smooth' });
 
-        const target = button.getAttribute('data-target');
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         
