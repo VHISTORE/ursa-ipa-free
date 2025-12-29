@@ -26,7 +26,6 @@ let currentEditId = null;
 let isIconUploaded = false;
 let isIpaUploaded = false;
 
-// Элементы интерфейса
 const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
@@ -50,19 +49,19 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
 document.getElementById('logout-btn').onclick = () => signOut(auth);
 
-// --- ПРОВЕРКА ГОТОВНОСТИ КНОПКИ ---
 function updateSubmitButton() {
     if (isIconUploaded && isIpaUploaded) {
         submitBtn.disabled = false;
         submitBtn.textContent = editMode ? "Update Application" : "Publish App";
+        submitBtn.style.background = "#007aff";
     } else {
         submitBtn.disabled = true;
         submitBtn.textContent = "Waiting for DirectLinks...";
     }
 }
 
-// --- СОЗДАНИЕ DIRECT LINK (API МАЙ 2025) ---
-async function createDirectLink(contentId) {
+// --- УЛУЧШЕННОЕ СОЗДАНИЕ DIRECT LINK (С ПОВТОРАМИ) ---
+async function createDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
             method: 'POST',
@@ -74,9 +73,19 @@ async function createDirectLink(contentId) {
         });
         const result = await response.json();
         
-        // Проверка структуры ответа согласно документации
+        console.log(`Attempt ${retryCount + 1} for ${contentId}:`, result);
+
+        // Проверяем наличие массива ссылок
         if (result.status === "ok" && result.data && result.data.directLinks && result.data.directLinks.length > 0) {
-            return result.data.directLinks[0].link || result.data.directLinks[0].url;
+            // В новом API поле может называться 'directLink' или 'link'
+            return result.data.directLinks[0].directLink || result.data.directLinks[0].link;
+        }
+
+        // Если ссылки еще нет (индексация), пробуем снова через 2 секунды (до 3 раз)
+        if (retryCount < 3) {
+            console.log("Link not ready yet, retrying in 2s...");
+            await new Promise(r => setTimeout(r, 2000));
+            return await createDirectLink(contentId, retryCount + 1);
         }
         return null;
     } catch (e) {
@@ -99,7 +108,6 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         formData.append('file', file);
 
         const xhr = new XMLHttpRequest();
-        // Используем глобальный эндпоинт для прямой загрузки
         xhr.open('POST', 'https://upload.gofile.io/uploadfile');
         xhr.setRequestHeader('Authorization', `Bearer ${GOFILE_TOKEN}`);
 
@@ -113,21 +121,21 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔗 Indexing file...";
+                    status.textContent = "🔗 Generating Direct Link...";
                     const contentId = res.data.id;
                     
-                    // Задержка 1.5 сек для индексации на серверах Gofile
+                    // Первая задержка 1.5 сек перед первым запросом ссылки
                     await new Promise(r => setTimeout(r, 1500));
 
                     const directUrl = await createDirectLink(contentId);
                     
-                    // Если прямая ссылка создана - берем её, иначе стандартную страницу
+                    // Если прямая ссылка создана - берем её, иначеFallback на обычную
                     const finalUrl = directUrl || res.data.downloadPage;
                     
                     hiddenInput.value = finalUrl; 
-                    status.textContent = directUrl ? "✅ Direct Link Ready!" : "✅ Link Ready!";
-                    status.style.color = "#30d158";
-                    progress.style.background = "#30d158";
+                    status.textContent = directUrl ? "✅ Direct Link Ready!" : "⚠️ Fallback Link Ready";
+                    status.style.color = directUrl ? "#30d158" : "#ff9f0a";
+                    progress.style.background = directUrl ? "#30d158" : "#ff9f0a";
                     
                     if (hiddenInputId === 'icon_url') {
                         isIconUploaded = true;
