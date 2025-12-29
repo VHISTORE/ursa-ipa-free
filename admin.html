@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>URSA Admin Panel</title>
     <link rel="stylesheet" href="admin.css">
+    <style>
+        /* Дополнительное исправление для многострочного текста */
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
     <div id="auth-container" class="admin-container">
@@ -12,10 +21,10 @@
             <h1>URSA Admin Access</h1>
         </header>
         <div class="admin-section" style="text-align: center;">
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Please sign in with your Google account.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Please sign in with an authorized Google account to manage the database.</p>
             <button id="login-btn">Sign in with Google</button>
             <div style="text-align: center; margin-top: 15px;">
-                <a href="index.html" class="back-link">← Back to Site</a>
+                <a href="index.html" class="back-link">← Back to Store</a>
             </div>
         </div>
     </div>
@@ -31,18 +40,18 @@
         </header>
 
         <section class="admin-section">
-            <h3 id="form-title">Editor</h3>
+            <h3 id="form-title">IPA Editor</h3>
             <form id="add-app-form">
                 <input type="hidden" id="icon_url">
                 <input type="hidden" id="download_url">
 
                 <div class="form-group">
                     <label>App Name</label>
-                    <input type="text" id="name" required placeholder="e.g. Minecraft">
+                    <input type="text" id="name" required placeholder="e.g. Subway Surfers">
                 </div>
 
                 <div class="form-group">
-                    <label>App Icon (Photo Library / Files)</label>
+                    <label>App Icon (PNG/JPG)</label>
                     <div class="upload-box">
                         <input type="file" id="icon-input" accept="image/*" class="file-input">
                         <div class="upload-ui">
@@ -54,7 +63,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>IPA File (System Files)</label>
+                    <label>IPA File</label>
                     <div class="upload-box">
                         <input type="file" id="ipa-input" accept=".ipa" class="file-input">
                         <div class="upload-ui">
@@ -75,24 +84,24 @@
                     </div>
                     <div class="form-group">
                         <label>Category</label>
-                        <input type="text" id="category" required placeholder="Action">
+                        <input type="text" id="category" required placeholder="Action / Social">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Version</label>
-                        <input type="text" id="version" required placeholder="1.20.1">
+                        <input type="text" id="version" required placeholder="1.0.0">
                     </div>
                     <div class="form-group">
                         <label>Size</label>
-                        <input type="text" id="size" required placeholder="150 MB">
+                        <input type="text" id="size" required placeholder="100 MB" readonly>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Bundle ID</label>
-                    <input type="text" id="bundle_id" required placeholder="com.mojang.minecraftpe">
+                    <input type="text" id="bundle_id" required placeholder="com.developer.app">
                 </div>
 
                 <div class="form-row">
@@ -102,13 +111,13 @@
                     </div>
                     <div class="form-group">
                         <label>Features</label>
-                        <input type="text" id="features" placeholder="Mod Menu / DLC">
+                        <input type="text" id="features" placeholder="Original / Mod Menu">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea id="description" rows="3" placeholder="Describe the application..."></textarea>
+                    <textarea id="description" rows="5" placeholder="Enter app description, what's new, or mod features here..."></textarea>
                 </div>
 
                 <button type="submit" id="submit-btn" disabled>Upload files first...</button>
@@ -118,7 +127,7 @@
         <section class="admin-section">
             <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0;">Inventory</h3>
-                <span class="refresh-hint" style="font-size: 11px; opacity: 0.5;">Auto-updates from Firestore</span>
+                <span class="refresh-hint" style="font-size: 11px; opacity: 0.5;">Live sync enabled</span>
             </div>
 
             <div class="search-container" style="margin-bottom: 20px;">
@@ -131,7 +140,7 @@
         </section>
 
         <footer style="text-align: center; opacity: 0.3; font-size: 10px; padding: 20px 0;">
-            URSA IPA Management System • 2025
+            URSA IPA Management System • v2.0 • 2025
         </footer>
     </div>
 
