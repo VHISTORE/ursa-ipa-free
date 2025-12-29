@@ -1,0 +1,61 @@
+/* Базовые настройки */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+    background: radial-gradient(circle at top, #1c1c1e, #000000);
+    color: white;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Контейнер для контента */
+#content {
+    padding: 20px;
+    height: calc(100vh - 70px); /* Вычитаем высоту навигации */
+    overflow-y: auto;
+}
+
+/* Нижняя панель */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 70px;
+    background: rgba(28, 28, 30, 0.95);
+    backdrop-filter: blur(10px); /* Эффект размытия */
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 0.5px solid #38383a;
+    padding-bottom: env(safe-area-inset-bottom); /* Поддержка челок iPhone */
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    color: #8e8e93;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.nav-item.active {
+    color: #0a84ff; /* Синий цвет активной кнопки */
+}
+
+.icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.label {
+    font-size: 10px;
+    font-weight: 500;
+}
