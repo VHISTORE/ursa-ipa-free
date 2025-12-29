@@ -238,6 +238,14 @@ async function openModal(appData, docId) {
     const modalBody = document.getElementById('modal-body');
     const displayViews = (appData.views || 0) + 1;
 
+    // Logic: ensure "Product by URSA" is at the end of the description
+    let descContent = appData.description || "";
+    if (descContent && !descContent.includes("Product by URSA")) {
+        descContent += "\n\nProduct by URSA";
+    } else if (!descContent) {
+        descContent = "Product by URSA";
+    }
+
     modalBody.innerHTML = `
         <div class="modal-header-info">
             <img src="${appData.icon_url}" class="modal-icon-big" onerror="this.src='https://via.placeholder.com/60'">
@@ -255,9 +263,12 @@ async function openModal(appData, docId) {
             <div class="stat-item">SIZE<b>${appData.size}</b></div>
             <div class="stat-item">iOS<b>${appData.min_ios}+</b></div>
             <div class="stat-item">VIEWS<b id="modal-view-count">${displayViews}</b></div>
-            <div class="stat-item" style="grid-column: span 2;">FEATURES<b>${appData.features || "Original"}</b></div>
+            <div class="stat-item" style="grid-column: span 2;">
+                FEATURES
+                <b style="white-space: pre-wrap; font-weight: 700; margin-top: 5px; display: block; color: white; text-transform: none; font-size: 14px;">${appData.features || "Original"}</b>
+            </div>
         </div>
-        <div class="modal-desc">${appData.description || "No description available yet."}</div>
+        <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${descContent}</div>
         <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
     `;
     overlay.classList.add('active');
