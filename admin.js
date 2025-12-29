@@ -35,6 +35,16 @@ const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
 const searchInput = document.getElementById('inventory-search');
 
+// --- УТИЛИТА ДЛЯ РАЗМЕРА ФАЙЛА ---
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
 // --- УПРАВЛЕНИЕ ДОСТУПОМ ---
 onAuthStateChanged(auth, (user) => {
     if (user && user.email === ADMIN_EMAIL) {
@@ -63,7 +73,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР DIRECT LINK ---
+// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР ССЫЛОК ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -114,6 +124,11 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
     const hiddenInput = document.getElementById(hiddenInputId);
+
+    // АВТОМАТИЧЕСКОЕ СЧИТЫВАНИЕ РАЗМЕРА ДЛЯ IPA
+    if (hiddenInputId === 'download_url') {
+        document.getElementById('size').value = formatBytes(file.size);
+    }
 
     try {
         status.style.color = "white";
@@ -178,7 +193,7 @@ async function loadInventory() {
     try {
         const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
         const snap = await getDocs(q);
-        allApps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); // Сохраняем локально
+        allApps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
         renderList(allApps);
     } catch (e) { console.error(e); }
 }
@@ -209,7 +224,6 @@ function renderList(apps) {
         adminAppList.appendChild(div);
     });
 
-    // Привязка кнопок
     document.querySelectorAll('.del-btn').forEach(btn => {
         btn.onclick = async () => {
             if(confirm('Delete app?')) {
@@ -227,7 +241,6 @@ function renderList(apps) {
     });
 }
 
-// Живой поиск
 searchInput.addEventListener('input', (e) => {
     const val = e.target.value.toLowerCase().trim();
     const filtered = allApps.filter(app => 
