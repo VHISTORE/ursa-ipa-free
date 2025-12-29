@@ -11,8 +11,10 @@ import {
     doc 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+// Добавлен импорт для работы с облачными функциями
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
-// Firebase configuration for ursaipa
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
   authDomain: "ursaipa.firebaseapp.com",
@@ -23,27 +25,26 @@ const firebaseConfig = {
   measurementId: "G-RWFQ47DLHS"
 };
 
-// Initialize
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const messaging = getMessaging(app);
+const functions = getFunctions(app); // Инициализация функций для подписки
 
 let currentSection = 'games';
 let currentCategory = 'All';
 
 /**
- * Push Notifications Logic (GitHub Pages & iOS Optimized)
+ * Логика уведомлений (PWA & iOS)
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
     
-    // Проверка поддержки Notification API
     if (!('Notification' in window)) {
         alert("Уведомления не поддерживаются вашим браузером.");
         return;
     }
 
-    // Проверка для iOS: работает ли сайт как PWA (добавлен на рабочий стол)
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
@@ -55,7 +56,6 @@ window.activateNotifications = async function() {
     try {
         if (statusEl) statusEl.textContent = '...';
         
-        // Запрос прав
         const permission = await Notification.requestPermission();
         
         if (permission === 'granted') {
@@ -72,11 +72,18 @@ window.activateNotifications = async function() {
             
             if (token) {
                 console.log("FCM Token:", token);
+
+                // АВТОМАТИЧЕСКАЯ ПОДПИСКА НА ТЕМУ 'all'
+                try {
+                    const subscribe = httpsCallable(functions, 'subscribeToTopic');
+                    await subscribe({ token: token });
+                    console.log("Успешно подписан на тему: all");
+                } catch (subErr) {
+                    console.error("Ошибка подписки через Cloud Functions:", subErr);
+                }
+
                 localStorage.setItem('ursa_notify_enabled', 'true');
 
-                // Логика подписки на тему 'all' через API Firebase
-                // Примечание: Для GitHub Pages отправка пушей будет идти на тему /topics/all
-                
                 if (statusEl) {
                     statusEl.textContent = 'ON';
                     statusEl.style.background = '#30d158';
@@ -95,14 +102,13 @@ window.activateNotifications = async function() {
     }
 };
 
-// Прослушивание сообщений во время работы сайта
 onMessage(messaging, (payload) => {
     console.log('Message received. ', payload);
     alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
 });
 
 /**
- * Helper: Share functionality
+ * Вспомогательные функции (Share, Format, Render)
  */
 window.shareApp = (bundleId) => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?id=${bundleId}`;
