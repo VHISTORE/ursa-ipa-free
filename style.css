@@ -80,14 +80,7 @@ body::after {
     letter-spacing: 2px;
     text-transform: uppercase;
     margin: 0;
-    background: linear-gradient(
-        to bottom, 
-        #ffffff 0%, 
-        #ffffff 45%, 
-        #a1a1a1 50%, 
-        #ffffff 55%, 
-        #ffffff 100%
-    );
+    background: linear-gradient(to bottom, #ffffff 0%, #ffffff 45%, #a1a1a1 50%, #ffffff 55%, #ffffff 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
@@ -113,15 +106,15 @@ body::after {
     50% { opacity: 0.2; filter: brightness(0.8); }
 }
 
-/* --- ПАНЕЛЬ НАВИГАЦИИ (ОПУЩЕНА НИЖЕ) --- */
+/* --- ПАНЕЛЬ НАВИГАЦИИ --- */
 .bottom-nav {
     position: fixed;
-    bottom: 15px; /* Опустили с 25px до 15px */
+    bottom: 15px; 
     left: 50%;
     transform: translateX(-50%);
     width: 92%;
     max-width: 420px;
-    height: 60px; /* Сделали чуть компактнее */
+    height: 60px; 
     background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -167,18 +160,64 @@ body::after {
     transform: translateY(-1px);
 }
 
-.nav-item.active .nav-label {
-    color: #ffffff;
-}
+.nav-item.active .nav-label { color: #ffffff; }
+.nav-item:active { transform: scale(0.9); }
 
-.nav-item:active {
-    transform: scale(0.9);
-}
-
+/* --- СТИЛИ ДЛЯ КАРТОЧЕК --- */
 #content {
     position: relative;
     z-index: 1;
     padding: 15px;
-    height: calc(100vh - 100px);
+    height: calc(100vh - 85px); /* Учитываем шапку и панель */
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#app-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 80px; /* Зазор перед панелью */
+}
+
+.app-card {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 0.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.app-info { flex: 1; min-width: 0; }
+.app-name {
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+.app-meta { font-size: 11px; opacity: 0.6; margin-bottom: 4px; }
+.app-features { font-size: 10px; color: var(--badge-color); font-weight: 700; text-transform: uppercase; }
+
+.download-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #007aff;
+    font-weight: 800;
+    font-size: 12px;
+    padding: 6px 16px;
+    border-radius: 15px;
+    cursor: pointer;
 }
