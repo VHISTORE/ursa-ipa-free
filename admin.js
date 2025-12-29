@@ -26,7 +26,6 @@ let currentEditId = null;
 let isIconUploaded = false;
 let isIpaUploaded = false;
 
-// Элементы интерфейса
 const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
@@ -64,7 +63,25 @@ function updateSubmitButton() {
 // --- ИСПРАВЛЕННОЕ ПОЛУЧЕНИЕ DIRECT LINK ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
-        const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
+        // Шаг 1: Проверяем, является ли контент папкой. Если да — ищем файл внутри.
+        const infoRes = await fetch(`https://api.gofile.io/contents/${contentId}`, {
+            headers: { 'Authorization': `Bearer ${GOFILE_TOKEN}` }
+        });
+        const info = await infoRes.json();
+
+        let targetId = contentId;
+
+        if (info.status === "ok" && info.data.type === "folder") {
+            const childrenKeys = Object.keys(info.data.children);
+            if (childrenKeys.length > 0) {
+                // Берем ID первого файла внутри созданной папки
+                targetId = childrenKeys[0]; 
+                console.log("Targeting file ID inside folder:", targetId);
+            }
+        }
+
+        // Шаг 2: Создаем прямую ссылку для конкретного файла
+        const response = await fetch(`https://api.gofile.io/contents/${targetId}/directlinks`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GOFILE_TOKEN}`,
@@ -76,25 +93,21 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         });
         
         const result = await response.json();
-        console.log(`Attempt ${retryCount + 1} for ${contentId}:`, result);
+        console.log(`DirectLink Attempt ${retryCount + 1}:`, result);
 
         if (result.status === "ok" && result.data && result.data.directLinks) {
             const dl = result.data.directLinks;
             
-            // Если пришел массив (как в доках)
             if (Array.isArray(dl) && dl.length > 0) {
                 return dl[0].link || dl[0].directLink;
-            } 
-            // Если пришел объект (бывает в некоторых версиях API)
-            else if (typeof dl === 'object') {
+            } else if (typeof dl === 'object') {
                 const keys = Object.keys(dl);
                 if (keys.length > 0) return dl[keys[0]].link || dl[keys[0]].directLink;
             }
         }
 
-        // Если не готово, пробуем еще раз
         if (retryCount < 5) {
-            console.log("DirectLink not found in response, retrying in 3s...");
+            console.log("DirectLink not ready, retrying in 3s...");
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
         }
@@ -133,15 +146,13 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔗 Creating Direct Link...";
-                    const contentId = res.data.id;
+                    status.textContent = "🔍 Finding File ID...";
+                    const folderId = res.data.id;
                     
-                    // Небольшая задержка перед запросом ссылки, чтобы сервер Gofile "осознал" файл
-                    await new Promise(r => setTimeout(r, 1500));
+                    // Ждем немного, чтобы Gofile проиндексировал содержимое новой папки
+                    await new Promise(r => setTimeout(r, 2000));
 
-                    const directUrl = await createAndGetDirectLink(contentId);
-                    
-                    // Если Direct Link не создался, используем downloadPage как запасной вариант
+                    const directUrl = await createAndGetDirectLink(folderId);
                     const finalUrl = directUrl || res.data.downloadPage;
                     
                     hiddenInput.value = finalUrl; 
