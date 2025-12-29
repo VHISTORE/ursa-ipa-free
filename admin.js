@@ -61,7 +61,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- ПОЛУЧЕНИЕ DIRECT LINK ДЛЯ ФАЙЛА ---
+// --- ИСПРАВЛЕННОЕ ПОЛУЧЕНИЕ DIRECT LINK ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -78,11 +78,17 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
 
         if (result.status === "ok" && result.data && result.data.directLinks) {
             const dl = result.data.directLinks;
-            // Проверка на массив или объект
-            if (Array.isArray(dl) && dl.length > 0) return dl[0].link;
-            if (typeof dl === 'object') {
-                const keys = Object.keys(dl);
-                if (keys.length > 0) return dl[keys[0]].link;
+            
+            // Если Gofile вернул массив
+            if (Array.isArray(dl) && dl.length > 0) {
+                return dl[0].link || dl[0].directLink;
+            } 
+            
+            // Если Gofile вернул ОБЪЕКТ (ваш случай на скриншотах)
+            const linkKeys = Object.keys(dl);
+            if (linkKeys.length > 0) {
+                const firstKey = linkKeys[0];
+                return dl[firstKey].link || dl[firstKey].directLink;
             }
         }
 
@@ -98,7 +104,7 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
     }
 }
 
-// --- ЗАГРУЗКА НАПРЯМУЮ В ROOT ---
+// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА В ROOT ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -110,7 +116,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('folderId', ROOT_FOLDER_ID); // Принудительно в ваш Root
+        formData.append('folderId', ROOT_FOLDER_ID);
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://upload.gofile.io/uploadfile');
@@ -127,9 +133,8 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
                     status.textContent = "🔗 Creating Direct Link...";
-                    const fileId = res.data.id; // Теперь это ID файла
+                    const fileId = res.data.id;
                     
-                    // Небольшая задержка для индексации
                     await new Promise(r => setTimeout(r, 1500));
 
                     const directUrl = await createAndGetDirectLink(fileId);
