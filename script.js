@@ -32,7 +32,7 @@ let currentSection = 'games';
 let currentCategory = 'All';
 
 /**
- * Push Notifications Logic
+ * Push Notifications Logic (iOS PWA Compatible)
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
@@ -42,7 +42,7 @@ window.activateNotifications = async function() {
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
     if (isIOS && !isStandalone) {
-        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' внизу Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с иконки на рабочем столе и попробуйте снова!");
+        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' в Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с иконки на рабочем столе!");
         return;
     }
 
@@ -65,19 +65,20 @@ window.activateNotifications = async function() {
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
-                alert("✅ Уведомления успешно включены!");
+                alert("✅ Notifications enabled successfully!");
             }
         } else {
             if (statusEl) statusEl.textContent = 'OFF';
-            alert("❌ Доступ запрещен. Включите уведомления в настройках вашего браузера.");
+            alert("❌ Permission denied. Please check your browser notification settings.");
         }
     } catch (error) {
         console.error("Notification Error:", error);
-        alert("Ваш браузер или режим не поддерживает уведомления.");
+        if (statusEl) statusEl.textContent = 'OFF';
+        alert("Notification system is unavailable on this device/browser.");
     }
 };
 
-// Прослушивание сообщений, когда сайт открыт
+// Прослушивание сообщений, когда сайт открыт (Foreground)
 onMessage(messaging, (payload) => {
     console.log('Message received. ', payload);
     alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
@@ -210,7 +211,7 @@ async function openModal(appData, docId) {
             <div class="modal-title-wrap">
                 <h2>${appData.name}</h2>
                 <button class="share-btn-rect" onclick="shareApp('${appData.bundle_id}')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share">
+                    <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share" style="width:14px;filter:invert(1)">
                     <span>SHARE</span>
                 </button>
                 <p class="bundle-id-text">${appData.bundle_id}</p>
@@ -415,7 +416,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
                             </div>
                             <span class="arrow">›</span>
                         </div>
-                        <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
+                        <div class="more-item-link notify-btn" onclick="window.activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
                             <div class="more-item-content">
                                 <span class="item-icon">🔔</span>
                                 <span>IPA Notifications</span>
