@@ -18,7 +18,7 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 // Данные Gofile и Admin
-const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM"; 
+const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35"; 
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 
 let editMode = false;
