@@ -26,12 +26,14 @@ let editMode = false;
 let currentEditId = null;
 let isIconUploaded = false;
 let isIpaUploaded = false;
+let allApps = []; // Массив для локального поиска
 
 const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
+const searchInput = document.getElementById('inventory-search');
 
 // --- УПРАВЛЕНИЕ ДОСТУПОМ ---
 onAuthStateChanged(auth, (user) => {
@@ -61,7 +63,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР DIRECT LINK (MAX COMPATIBILITY) ---
+// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР DIRECT LINK ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -74,17 +76,13 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         });
         
         const result = await response.json();
-        console.log(`DirectLink Attempt ${retryCount + 1} for ${contentId}:`, result);
+        console.log(`DirectLink Attempt ${retryCount + 1}:`, result);
 
         if (result.status === "ok" && result.data) {
             const data = result.data;
-
-            // 1. Ищем прямую строку 'link' или 'directLink' в корне data
             if (data.link) return data.link;
             if (data.directLink) return data.directLink;
 
-            // 2. Если внутри есть объект (например, directLinks или вложенный объект с ID)
-            // Мы перебираем все ключи и ищем внутри них поля 'link'
             const deepSearch = (obj) => {
                 for (let key in obj) {
                     if (typeof obj[key] === 'string' && obj[key].startsWith('http')) return obj[key];
@@ -97,26 +95,21 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
             };
 
             const foundUrl = deepSearch(data);
-            if (foundUrl) {
-                console.log("🚀 SUCCESS! Link extracted via DeepSearch:", foundUrl);
-                return foundUrl;
-            }
+            if (foundUrl) return foundUrl;
         }
 
-        // Логика повторов
         if (retryCount < 5) {
-            console.log("URL not found in response yet, retrying in 3s...");
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
         }
         return null;
     } catch (e) {
-        console.error("Critical Error in createAndGetDirectLink:", e);
+        console.error("DirectLink Error:", e);
         return null;
     }
 }
 
-// --- ЗАГРУЗКА ФАЙЛА В ROOT ---
+// --- ЗАГРУЗКА ФАЙЛА ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -146,10 +139,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
                 if (res.status === "ok") {
                     status.textContent = "🔗 Fetching Direct Link...";
                     const fileId = res.data.id;
-                    
-                    // Пауза 2 сек для индексации на серверах Gofile
                     await new Promise(r => setTimeout(r, 2000));
-
                     const directUrl = await createAndGetDirectLink(fileId);
                     const finalUrl = directUrl || res.data.downloadPage;
                     
@@ -166,19 +156,14 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
                     }
                     updateSubmitButton();
                 } else {
-                    status.textContent = "❌ Upload Error: " + res.status;
+                    status.textContent = "❌ Upload Error";
                 }
-            } catch (e) {
-                status.textContent = "❌ Processing Error";
-            }
+            } catch (e) { status.textContent = "❌ Error"; }
         };
         xhr.send(formData);
-    } catch (err) {
-        status.textContent = "❌ Connection failed";
-    }
+    } catch (err) { status.textContent = "❌ Failed"; }
 }
 
-// СЛУШАТЕЛИ ФАЙЛОВ
 document.getElementById('icon-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'icon-progress', 'icon-status', 'icon_url');
 };
@@ -187,28 +172,44 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
-// ИНВЕНТАРЬ И РЕДАКТИРОВАНИЕ
+// --- СИСТЕМА ИНВЕНТАРЯ И ПОИСКА ---
 async function loadInventory() {
     adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
-    const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
-    const snap = await getDocs(q);
+    try {
+        const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
+        const snap = await getDocs(q);
+        allApps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); // Сохраняем локально
+        renderList(allApps);
+    } catch (e) { console.error(e); }
+}
+
+function renderList(apps) {
     adminAppList.innerHTML = '';
-    snap.forEach((appDoc) => {
-        const data = appDoc.data();
+    if (apps.length === 0) {
+        adminAppList.innerHTML = '<p style="text-align:center; opacity:0.3; padding:20px;">No results found</p>';
+        return;
+    }
+
+    apps.forEach((appData) => {
         const div = document.createElement('div');
         div.className = 'admin-item';
         div.innerHTML = `
             <div class="admin-item-info">
-                <img src="${data.icon_url}" width="35" height="35" style="border-radius:8px; object-fit:cover;">
-                <div><strong>${data.name}</strong><br><small style="opacity:0.5">v${data.version}</small></div>
+                <img src="${appData.icon_url}" width="35" height="35" style="border-radius:8px; object-fit:cover;">
+                <div>
+                    <strong>${appData.name}</strong><br>
+                    <small style="opacity:0.4; font-size:10px;">${appData.bundle_id || 'no bundle'}</small>
+                </div>
             </div>
             <div class="admin-item-actions">
-                <button class="edit-btn" data-id="${appDoc.id}">Edit</button>
-                <button class="del-btn" data-id="${appDoc.id}">Delete</button>
+                <button class="edit-btn" data-id="${appData.id}">Edit</button>
+                <button class="del-btn" data-id="${appData.id}">Delete</button>
             </div>
         `;
         adminAppList.appendChild(div);
     });
+
+    // Привязка кнопок
     document.querySelectorAll('.del-btn').forEach(btn => {
         btn.onclick = async () => {
             if(confirm('Delete app?')) {
@@ -217,13 +218,24 @@ async function loadInventory() {
             }
         };
     });
+
     document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.onclick = () => {
-            const appData = snap.docs.find(d => d.id === btn.dataset.id).data();
-            startEdit(btn.dataset.id, appData);
+            const data = allApps.find(a => a.id === btn.dataset.id);
+            startEdit(btn.dataset.id, data);
         };
     });
 }
+
+// Живой поиск
+searchInput.addEventListener('input', (e) => {
+    const val = e.target.value.toLowerCase().trim();
+    const filtered = allApps.filter(app => 
+        app.name.toLowerCase().includes(val) || 
+        (app.bundle_id && app.bundle_id.toLowerCase().includes(val))
+    );
+    renderList(filtered);
+});
 
 function startEdit(id, appData) {
     currentEditId = id;
@@ -235,6 +247,8 @@ function startEdit(id, appData) {
         const el = document.getElementById(f);
         if (el) el.value = appData[f] || '';
     });
+    
+    document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
     submitBtn.style.background = "#30d158";
     updateSubmitButton();
     window.scrollTo({ top: 0, behavior: 'smooth' });
