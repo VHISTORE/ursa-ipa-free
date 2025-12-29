@@ -47,7 +47,6 @@ function formatBytes(bytes, decimals = 2) {
 
 // --- ACCESS CONTROL ---
 onAuthStateChanged(auth, (user) => {
-    // Check if the user's email is in the authorized admins list
     if (user && ADMIN_EMAILS.includes(user.email)) {
         authContainer.style.display = 'none';
         adminMain.style.display = 'block';
@@ -307,9 +306,16 @@ function resetForm() {
     updateSubmitButton();
 }
 
-// FIX: Allow multi-line input in Description (textarea)
-document.getElementById('description').addEventListener('keydown', function(e) {
+// --- IPHONE FIX: PREVENT AUTO-SUBMIT ON RETURN KEY ---
+form.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-        e.stopPropagation(); 
+        // If the user is typing in the description box, let 'Enter' make a new line
+        if (e.target.id === 'description') {
+            e.stopPropagation(); 
+        } else {
+            // If the user is in any other input (like Name, Version), stop 'Enter' from submitting the form
+            e.preventDefault();
+            return false;
+        }
     }
 });
