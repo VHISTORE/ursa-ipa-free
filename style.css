@@ -1,5 +1,5 @@
 :root {
-    --header-bg: rgba(0, 0, 0, 0.6); 
+    --header-bg: rgba(0, 0, 0, 0.5); /* Чуть прозрачнее для лучшего эффекта стекла */
     --text-color: #ffffff;
     --badge-color: #30d158;
 }
@@ -14,74 +14,102 @@
 body {
     margin: 0;
     width: 100%;
-    height: 100vh;
+    min-height: 100vh;
     color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    /* Глубокий многослойный фон */
-    background-color: #0a192f;
-    background-image: 
-        radial-gradient(at 0% 0%, rgba(30, 60, 114, 0.5) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(42, 82, 152, 0.5) 0px, transparent 50%),
-        radial-gradient(at 50% 100%, rgba(20, 30, 48, 0.8) 0px, transparent 50%),
-        radial-gradient(at 0% 100%, rgba(0, 210, 255, 0.2) 0px, transparent 50%);
-    background-attachment: fixed;
+    background-color: #050a15; /* Базовый глубокий темный */
     overflow-x: hidden;
     position: relative;
 }
 
-/* Эффект живого движения на фоне */
-body::before {
+/* Анимированные световые пятна */
+body::before, body::after {
     content: "";
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle at 50% 50%, rgba(10, 132, 255, 0.1), transparent 80%);
-    animation: pulseBg 10s ease-in-out infinite alternate;
+    width: 80vw;
+    height: 80vw;
+    border-radius: 50%;
     z-index: -1;
+    filter: blur(80px); /* Сильное размытие для мягкости */
+    opacity: 0.4;
+    animation: moveLight 20s ease-in-out infinite alternate;
 }
 
-@keyframes pulseBg {
-    0% { transform: scale(1) translate(0, 0); }
-    100% { transform: scale(1.2) translate(5%, 5%); }
+body::before {
+    background: radial-gradient(circle, #1e3c72, #2a5298);
+    top: -20%;
+    left: -20%;
 }
 
-/* Шапка с улучшенным стеклом */
+body::after {
+    background: radial-gradient(circle, #00d2ff, #3a7bd5);
+    bottom: -10%;
+    right: -10%;
+    animation-delay: -5s; /* Разносим анимации по времени */
+    animation-duration: 25s;
+}
+
+/* Анимация плавного перемещения */
+@keyframes moveLight {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+    50% {
+        transform: translate(20%, 15%) scale(1.1);
+    }
+    100% {
+        transform: translate(-10%, 25%) scale(0.9);
+    }
+}
+
+/* Шапка сайта */
 .main-header {
     position: sticky;
     top: 0;
     z-index: 1000;
     width: 100%;
-    padding: 25px 20px;
+    padding: 22px 20px;
     background: var(--header-bg);
-    backdrop-filter: blur(25px) saturate(200%);
-    -webkit-backdrop-filter: blur(25px) saturate(200%);
-    border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
     text-align: center;
+}
+
+.header-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .main-header h1 {
     font-size: 22px;
     font-weight: 800;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
     text-transform: uppercase;
     margin: 0;
-    background: linear-gradient(to bottom, #fff 60%, #aaa);
+    /* Эффект сияющего текста */
+    background: linear-gradient(180deg, #fff 0%, #a5c7ff 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    text-shadow: 0 10px 20px rgba(0,0,0,0.3);
 }
 
 .badge {
     font-size: 9px;
     font-weight: 900;
     color: var(--badge-color);
-    border: 1px solid rgba(48, 209, 88, 0.4);
-    background: rgba(48, 209, 88, 0.1);
-    padding: 2px 5px;
-    border-radius: 4px;
-    margin-left: 6px;
-    vertical-align: middle;
+    border: 1px solid var(--badge-color);
+    background: rgba(48, 209, 88, 0.05);
+    padding: 2px 6px;
+    border-radius: 5px;
+    margin-left: 10px;
+    box-shadow: 0 0 10px rgba(48, 209, 88, 0.2);
     text-transform: uppercase;
 }
 
 #content {
+    position: relative;
+    z-index: 1; /* Чтобы контент был над пятнами */
     padding: 20px;
 }
