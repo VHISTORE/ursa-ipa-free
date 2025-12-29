@@ -16,6 +16,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Глобальное состояние для фильтрации
+let currentSection = 'games';
+let currentCategory = 'All';
+
 /**
  * Преобразует Firebase Timestamp в строку даты (ДД.ММ.ГГГГ)
  */
@@ -30,7 +34,7 @@ function formatDate(timestamp) {
 }
 
 /**
- * Отрисовка карточки приложения в общем списке
+ * Отрисовка карточки приложения
  */
 function renderAppCard(appData) {
     const appList = document.getElementById('app-list');
@@ -38,8 +42,6 @@ function renderAppCard(appData) {
 
     const card = document.createElement('div');
     card.className = 'app-card';
-    
-    // Вместо features теперь отображаем дату загрузки
     const dateStr = formatDate(appData.upload_date);
 
     card.innerHTML = `
@@ -52,14 +54,96 @@ function renderAppCard(appData) {
         <button class="download-btn">GET</button>
     `;
 
-    // При нажатии на любую часть карточки открываем модалку
     card.addEventListener('click', () => openModal(appData));
-    
     appList.appendChild(card);
 }
 
 /**
- * Открытие модального окна с полной информацией
+ * Управление категориями (динамическое создание кнопок)
+ */
+async function renderCategoryBar(sectionName) {
+    const bar = document.getElementById('category-bar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    
+    // Всегда начинаем с кнопки "All"
+    const categories = ['All'];
+    
+    try {
+        // Получаем все документы секции, чтобы вытащить уникальные категории
+        const q = query(collection(db, "apps"), where("section", "==", sectionName));
+        const snap = await getDocs(q);
+        
+        snap.forEach(doc => {
+            const cat = doc.data().category;
+            if (cat && !categories.includes(cat)) {
+                categories.push(cat);
+            }
+        });
+
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
+            btn.textContent = cat === 'All' ? 'Все' : cat.charAt(0).toUpperCase() + cat.slice(1);
+            
+            btn.onclick = () => {
+                currentCategory = cat;
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                loadApps(sectionName, cat);
+            };
+            bar.appendChild(btn);
+        });
+    } catch (e) {
+        console.error("Ошибка категорий:", e);
+    }
+}
+
+/**
+ * Загрузка данных из Firebase с учетом фильтров
+ */
+async function loadApps(sectionName, category = 'All') {
+    const appList = document.getElementById('app-list');
+    if (!appList) return;
+    
+    appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5; font-size:14px;">Загрузка...</div>';
+
+    try {
+        const colRef = collection(db, "apps");
+        let q;
+        
+        // Формируем запрос в зависимости от выбранной категории
+        if (category === 'All') {
+            q = query(colRef, where("section", "==", sectionName), orderBy("upload_date", "desc"));
+        } else {
+            q = query(colRef, 
+                where("section", "==", sectionName), 
+                where("category", "==", category), 
+                orderBy("upload_date", "desc")
+            );
+        }
+        
+        const querySnapshot = await getDocs(q);
+        appList.innerHTML = ''; 
+
+        if (querySnapshot.empty) {
+            appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">Ничего не найдено</div>';
+            return;
+        }
+
+        querySnapshot.forEach((doc) => renderAppCard(doc.data()));
+    } catch (e) {
+        console.error("Firebase Error:", e);
+        if (e.code === 'failed-precondition') {
+            appList.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fff;">Нужен индекс для фильтрации. Ссылка в F12</div>';
+        } else {
+            appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Ошибка: ${e.code}</div>`;
+        }
+    }
+}
+
+/**
+ * Модальное окно
  */
 function openModal(appData) {
     const overlay = document.getElementById('modal-overlay');
@@ -83,91 +167,47 @@ function openModal(appData) {
         <div class="modal-desc">${appData.description || "Описание функционала скоро появится."}</div>
         <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
     `;
-
     overlay.classList.add('active');
 }
 
-/**
- * Закрытие модального окна
- */
-const closeModal = () => {
-    document.getElementById('modal-overlay').classList.remove('active');
-};
-
-// Назначаем слушатели для закрытия
+const closeModal = () => document.getElementById('modal-overlay').classList.remove('active');
 document.getElementById('close-modal').addEventListener('click', closeModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target.id === 'modal-overlay') closeModal();
 });
 
 /**
- * Загрузка данных из Firebase
- */
-async function loadApps(sectionName) {
-    const appList = document.getElementById('app-list');
-    if (!appList) return;
-    
-    appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5; font-size:14px;">Загрузка...</div>';
-
-    try {
-        const colRef = collection(db, "apps");
-        const q = query(
-            colRef, 
-            where("section", "==", sectionName),
-            orderBy("upload_date", "desc")
-        );
-        
-        const querySnapshot = await getDocs(q);
-        appList.innerHTML = ''; 
-
-        if (querySnapshot.empty) {
-            appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">Ничего не найдено</div>';
-            return;
-        }
-
-        querySnapshot.forEach((doc) => {
-            renderAppCard(doc.data());
-        });
-    } catch (e) {
-        console.error("Firebase Error:", e);
-        if (e.code === 'failed-precondition') {
-            appList.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fff;">Нужно подтвердить индекс. Ссылка в консоли браузера (F12)</div>';
-        } else {
-            appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Ошибка: ${e.code}</div>`;
-        }
-    }
-}
-
-/**
- * Навигация
+ * Навигация (Нижнее меню)
  */
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
         const contentArea = document.getElementById('content');
         if (contentArea) contentArea.scrollTo({ top: 0, behavior: 'smooth' });
 
+        const target = button.getAttribute('data-target');
+        
+        // Визуальное переключение кнопок
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         
-        const target = button.getAttribute('data-target');
-        
         if (target === 'games' || target === 'apps') {
+            currentSection = target;
+            currentCategory = 'All'; // Сброс фильтра при смене раздела
+            renderCategoryBar(target);
             loadApps(target);
         } else {
-            const appList = document.getElementById('app-list');
-            if (appList) {
-                appList.innerHTML = `
-                    <div style="text-align:center; padding:50px; opacity:0.5;">
-                        Раздел ${target.toUpperCase()} в разработке
-                    </div>`;
-            }
+            document.getElementById('category-bar').innerHTML = ''; // Скрываем категории в поиске/настройках
+            document.getElementById('app-list').innerHTML = `
+                <div style="text-align:center; padding:50px; opacity:0.5;">Раздел ${target.toUpperCase()} в разработке</div>
+            `;
         }
     });
 });
 
 /**
- * Старт
+ * Старт приложения
  */
 window.addEventListener('DOMContentLoaded', () => {
+    renderCategoryBar('games');
     loadApps('games');
 });
