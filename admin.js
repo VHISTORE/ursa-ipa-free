@@ -12,13 +12,12 @@ const firebaseConfig = {
     appId: "1:697377996977:web:f94ca78dfe3d3472942290"
 };
 
-// Инициализация сервисов
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Ваши данные Gofile и Admin
+// Данные Gofile и Admin
 const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM";
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 
@@ -26,55 +25,43 @@ let editMode = false;
 let currentEditId = null;
 
 // Элементы интерфейса
-const authContainer = document.getElementById('auth-container');
 const adminMain = document.getElementById('admin-main');
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const adminEmailSpan = document.getElementById('admin-email');
+const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
-
-const fileInput = document.getElementById('file-input');
-const uploadStatus = document.getElementById('upload-status');
-const progressBar = document.getElementById('progress-bar');
-const downloadUrlInput = document.getElementById('download_url');
 
 // --- УПРАВЛЕНИЕ ДОСТУПОМ ---
 onAuthStateChanged(auth, (user) => {
     if (user && user.email === ADMIN_EMAIL) {
         authContainer.style.display = 'none';
         adminMain.style.display = 'block';
-        adminEmailSpan.textContent = `Admin: ${user.email}`;
+        document.getElementById('admin-email').textContent = user.email;
         loadInventory();
     } else {
-        if (user) { 
-            alert("Access Denied"); 
-            signOut(auth); 
-        }
+        if (user) { alert("Access Denied"); signOut(auth); }
         authContainer.style.display = 'block';
         adminMain.style.display = 'none';
     }
 });
 
-loginBtn.onclick = () => signInWithPopup(auth, provider);
-logoutBtn.onclick = () => signOut(auth);
+document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
+document.getElementById('logout-btn').onclick = () => signOut(auth);
 
-// --- ЗАГРУЗКА НА GOFILE ---
-fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+// --- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ GOFILE ---
+async function uploadFile(file, progressId, statusId, hiddenInputId) {
+    const status = document.getElementById(statusId);
+    const progress = document.getElementById(progressId);
+    const hiddenInput = document.getElementById(hiddenInputId);
 
     try {
-        uploadStatus.style.color = "var(--text-secondary)";
-        uploadStatus.textContent = "🚀 Определение сервера...";
+        status.style.color = "var(--text-secondary)";
+        status.textContent = "🚀 Getting server...";
         
-        // 1. Получаем подходящий сервер
         const serverRes = await fetch('https://api.gofile.io/getServer');
         const serverData = await serverRes.json();
         const server = serverData.data.server;
 
-        // 2. Подготовка данных для загрузки
         const formData = new FormData();
         formData.append('file', file);
         formData.append('token', GOFILE_TOKEN);
@@ -82,36 +69,49 @@ fileInput.addEventListener('change', async (e) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `https://${server}.gofile.io/uploadFile`);
 
-        // Прогресс загрузки
-        xhr.upload.onprogress = (event) => {
-            const percent = (event.loaded / event.total) * 100;
-            progressBar.style.width = percent + "%";
-            uploadStatus.textContent = `Загрузка: ${Math.round(percent)}%`;
+        xhr.upload.onprogress = (e) => {
+            const percent = (e.loaded / e.total) * 100;
+            progress.style.width = percent + "%";
+            status.textContent = `Uploading: ${Math.round(percent)}%`;
         };
 
         xhr.onload = function() {
             const res = JSON.parse(xhr.responseText);
             if (res.status === "ok") {
-                // Прямая ссылка для Premium аккаунтов подставляется в форму
-                downloadUrlInput.value = res.data.downloadPage; 
-                uploadStatus.textContent = "✅ Файл готов к публикации!";
-                uploadStatus.style.color = "#30d158";
-                progressBar.style.background = "#30d158";
+                hiddenInput.value = res.data.downloadPage; 
+                status.textContent = "✅ File Ready!";
+                status.style.color = "#30d158";
+                progress.style.background = "#30d158";
+                
+                // Если это иконка, показываем превью
+                if (hiddenInputId === 'icon_url') {
+                    const preview = document.getElementById('icon-preview');
+                    if (preview) preview.innerHTML = `<img src="${URL.createObjectURL(file)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+                }
             } else {
-                uploadStatus.textContent = "❌ Ошибка Gofile: " + res.status;
+                status.textContent = "❌ Error: " + res.status;
+                status.style.color = "#ff453a";
             }
         };
-
         xhr.send(formData);
     } catch (err) {
-        uploadStatus.textContent = "❌ Ошибка соединения";
+        status.textContent = "❌ Connection failed";
         console.error(err);
     }
-});
+}
+
+// Слушатели выбора файлов
+document.getElementById('icon-input').onchange = (e) => {
+    if (e.target.files[0]) uploadFile(e.target.files[0], 'icon-progress', 'icon-status', 'icon_url');
+};
+
+document.getElementById('ipa-input').onchange = (e) => {
+    if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
+};
 
 // --- УПРАВЛЕНИЕ ИНВЕНТАРЕМ ---
 async function loadInventory() {
-    adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Синхронизация...</p>';
+    adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
     const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
     const snap = await getDocs(q);
     adminAppList.innerHTML = '';
@@ -122,7 +122,7 @@ async function loadInventory() {
         div.className = 'admin-item';
         div.innerHTML = `
             <div class="admin-item-info">
-                <img src="${data.icon_url}" width="35" style="border-radius:8px">
+                <img src="${data.icon_url}" width="35" height="35" style="border-radius:8px; object-fit:cover;">
                 <div>
                     <strong>${data.name}</strong><br>
                     <small style="opacity:0.5">v${data.version}</small>
@@ -136,29 +136,27 @@ async function loadInventory() {
         adminAppList.appendChild(div);
     });
 
-    // Обработка удаления
     document.querySelectorAll('.del-btn').forEach(btn => {
         btn.onclick = async () => {
-            if(confirm('Удалить это приложение навсегда?')) {
+            if(confirm('Delete app?')) {
                 await deleteDoc(doc(db, "apps", btn.dataset.id));
                 loadInventory();
             }
         };
     });
 
-    // Обработка редактирования
     document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.onclick = () => startEdit(btn.dataset.id, snap);
+        btn.onclick = () => {
+            const appData = snap.docs.find(d => d.id === btn.dataset.id).data();
+            startEdit(btn.dataset.id, appData);
+        };
     });
 }
 
-function startEdit(id, snap) {
-    const appDoc = snap.docs.find(d => d.id === id);
-    const appData = appDoc.data();
+function startEdit(id, appData) {
     currentEditId = id;
     editMode = true;
 
-    // Заполнение полей формы для редактирования
     document.getElementById('name').value = appData.name;
     document.getElementById('section').value = appData.section;
     document.getElementById('category').value = appData.category;
@@ -176,7 +174,7 @@ function startEdit(id, snap) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- ОТПРАВКА ФОРМЫ (CREATE / UPDATE) ---
+// --- ОТПРАВКА ФОРМЫ ---
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
@@ -199,17 +197,15 @@ form.addEventListener('submit', async (e) => {
     try {
         if (editMode) {
             await updateDoc(doc(db, "apps", currentEditId), appObj);
-            alert("Данные успешно обновлены!");
+            alert("Updated!");
         } else {
             appObj.views = 0;
             await addDoc(collection(db, "apps"), appObj);
-            alert("Приложение успешно добавлено!");
+            alert("Added!");
         }
         resetForm();
         loadInventory();
-    } catch (err) { 
-        alert("Ошибка Firestore: " + err.message); 
-    }
+    } catch (err) { alert(err.message); }
     submitBtn.disabled = false;
 });
 
@@ -219,7 +215,9 @@ function resetForm() {
     currentEditId = null;
     submitBtn.innerText = "Publish App";
     submitBtn.style.background = "var(--accent)";
-    progressBar.style.width = "0%";
-    uploadStatus.textContent = "Select .ipa file to start upload";
-    uploadStatus.style.color = "var(--text-secondary)";
+    document.getElementById('icon-progress').style.width = "0%";
+    document.getElementById('ipa-progress').style.width = "0%";
+    document.getElementById('icon-status').textContent = "Tap to upload icon";
+    document.getElementById('ipa-status').textContent = "Tap to select .ipa";
+    document.getElementById('icon-preview').innerHTML = "📸";
 }
