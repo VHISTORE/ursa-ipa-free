@@ -92,18 +92,6 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         if (result.status === "ok" && result.data) {
             const data = result.data;
             if (data.link) return data.link;
-            const deepSearch = (obj) => {
-                for (let key in obj) {
-                    if (typeof obj[key] === 'string' && obj[key].startsWith('http')) return obj[key];
-                    if (typeof obj[key] === 'object' && obj[key] !== null) {
-                        const found = deepSearch(obj[key]);
-                        if (found) return found;
-                    }
-                }
-                return null;
-            };
-            const foundUrl = deepSearch(data);
-            if (foundUrl) return foundUrl;
         }
         if (retryCount < 5) {
             await new Promise(r => setTimeout(r, 3000));
@@ -253,9 +241,15 @@ function startEdit(id, appData) {
         if (el) el.value = appData[f] || '';
     });
     document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+    
+    // БАГ 1 ФИКС: Плавный скролл к форме при нажатии Edit
+    const formElement = document.getElementById('add-app-form');
+    if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     submitBtn.style.background = "#30d158";
     updateSubmitButton();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 form.addEventListener('submit', async (e) => {
@@ -273,7 +267,7 @@ form.addEventListener('submit', async (e) => {
         download_url: document.getElementById('download_url').value, 
         min_ios: document.getElementById('min_ios').value,
         features: document.getElementById('features').value || "Original",
-        description: document.getElementById('description').value,
+        description: document.getElementById('description').value || "Product by URSA",
         upload_date: serverTimestamp()
     };
 
@@ -306,14 +300,14 @@ function resetForm() {
     updateSubmitButton();
 }
 
-// --- IPHONE FIX: PREVENT AUTO-SUBMIT ON RETURN KEY ---
+// БАГ 2 ФИКС: Разрешаем перенос строк во всех textarea и блокируем авто-сабмит в инпутах
 form.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-        // If the user is typing in the description box, let 'Enter' make a new line
-        if (e.target.id === 'description') {
+        // Если это textarea (Features или Description), разрешаем переход на новую строку
+        if (e.target.tagName === 'TEXTAREA') {
             e.stopPropagation(); 
         } else {
-            // If the user is in any other input (like Name, Version), stop 'Enter' from submitting the form
+            // Если это любой другой input (Name, Version и т.д.), блокируем Enter, чтобы не сохраняло запись случайно
             e.preventDefault();
             return false;
         }
