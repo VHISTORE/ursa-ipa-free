@@ -139,3 +139,54 @@ input:focus { border-color: var(--accent); background: rgba(255,255,255,0.08); o
     h1 { font-size: 24px; }
     .admin-section { padding: 20px; }
 }
+.admin-item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-btn {
+    background: rgba(48, 209, 88, 0.1);
+    color: #30d158;
+    border: 1px solid rgba(48, 209, 88, 0.2);
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.edit-btn:hover {
+    background: #30d158;
+    color: #fff;
+}
+
+.del-btn {
+    background: rgba(255, 69, 58, 0.1);
+    color: #ff453a;
+    border: 1px solid rgba(255, 69, 58, 0.2);
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.del-btn:hover {
+    background: #ff453a;
+    color: #fff;
+}
+
+/* Фикс для маленьких экранов чтобы кнопки не слипались */
+@media (max-width: 400px) {
+    .admin-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    .admin-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
