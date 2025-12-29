@@ -23,6 +23,8 @@ const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 
 let editMode = false;
 let currentEditId = null;
+let isIconUploaded = false;
+let isIpaUploaded = false;
 
 // Элементы интерфейса
 const adminMain = document.getElementById('admin-main');
@@ -48,6 +50,17 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
 document.getElementById('logout-btn').onclick = () => signOut(auth);
 
+// --- ПРОВЕРКА ГОТОВНОСТИ КНОПКИ ---
+function updateSubmitButton() {
+    if (isIconUploaded && isIpaUploaded) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = editMode ? "Update Application" : "Publish App";
+    } else {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Upload files first...";
+    }
+}
+
 // --- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ GOFILE ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
@@ -56,9 +69,10 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
 
     try {
         status.style.color = "var(--text-secondary)";
-        status.textContent = "🚀 Getting server...";
+        status.textContent = "🚀 Fetching server...";
         
-        const serverRes = await fetch('https://api.gofile.io/getServer');
+        // Исправленный эндпоинт получения сервера
+        const serverRes = await fetch('https://api.gofile.io/contents/getUploadServer');
         const serverData = await serverRes.json();
         const server = serverData.data.server;
 
@@ -67,7 +81,8 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         formData.append('token', GOFILE_TOKEN);
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', `https://${server}.gofile.io/uploadFile`);
+        // Исправленный эндпоинт загрузки
+        xhr.open('POST', `https://${server}.gofile.io/contents/uploadfile`);
 
         xhr.upload.onprogress = (e) => {
             const percent = (e.loaded / e.total) * 100;
@@ -76,21 +91,28 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         };
 
         xhr.onload = function() {
-            const res = JSON.parse(xhr.responseText);
-            if (res.status === "ok") {
-                hiddenInput.value = res.data.downloadPage; 
-                status.textContent = "✅ File Ready!";
-                status.style.color = "#30d158";
-                progress.style.background = "#30d158";
-                
-                // Если это иконка, показываем превью
-                if (hiddenInputId === 'icon_url') {
-                    const preview = document.getElementById('icon-preview');
-                    if (preview) preview.innerHTML = `<img src="${URL.createObjectURL(file)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+            try {
+                const res = JSON.parse(xhr.responseText);
+                if (res.status === "ok") {
+                    hiddenInput.value = res.data.downloadPage; 
+                    status.textContent = "✅ File Ready!";
+                    status.style.color = "#30d158";
+                    progress.style.background = "#30d158";
+                    
+                    if (hiddenInputId === 'icon_url') {
+                        isIconUploaded = true;
+                        const preview = document.getElementById('icon-preview');
+                        if (preview) preview.innerHTML = `<img src="${URL.createObjectURL(file)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+                    } else if (hiddenInputId === 'download_url') {
+                        isIpaUploaded = true;
+                    }
+                    updateSubmitButton();
+                } else {
+                    status.textContent = "❌ Error: " + res.status;
+                    status.style.color = "#ff453a";
                 }
-            } else {
-                status.textContent = "❌ Error: " + res.status;
-                status.style.color = "#ff453a";
+            } catch (e) {
+                status.textContent = "❌ Server error";
             }
         };
         xhr.send(formData);
@@ -156,6 +178,9 @@ async function loadInventory() {
 function startEdit(id, appData) {
     currentEditId = id;
     editMode = true;
+    // При редактировании считаем, что файлы уже есть в базе
+    isIconUploaded = true;
+    isIpaUploaded = true;
 
     document.getElementById('name').value = appData.name;
     document.getElementById('section').value = appData.section;
@@ -169,8 +194,8 @@ function startEdit(id, appData) {
     document.getElementById('features').value = appData.features;
     document.getElementById('description').value = appData.description;
 
-    submitBtn.innerText = "Update Application";
     submitBtn.style.background = "#30d158";
+    updateSubmitButton();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -213,11 +238,13 @@ function resetForm() {
     form.reset();
     editMode = false;
     currentEditId = null;
-    submitBtn.innerText = "Publish App";
+    isIconUploaded = false;
+    isIpaUploaded = false;
     submitBtn.style.background = "var(--accent)";
     document.getElementById('icon-progress').style.width = "0%";
     document.getElementById('ipa-progress').style.width = "0%";
     document.getElementById('icon-status').textContent = "Tap to upload icon";
     document.getElementById('ipa-status').textContent = "Tap to select .ipa";
     document.getElementById('icon-preview').innerHTML = "📸";
+    updateSubmitButton();
 }
