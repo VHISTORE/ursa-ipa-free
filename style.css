@@ -1,8 +1,7 @@
-/* Импортируем стильный широкий шрифт */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap');
 
 :root {
-    --header-bg: rgba(0, 0, 0, 0.6); 
+    --header-bg: rgba(0, 0, 0, 0.7);
     --text-color: #ffffff;
     --badge-color: #30d158;
 }
@@ -25,7 +24,7 @@ body {
     position: relative;
 }
 
-/* Фон оставляем (он крутой) */
+/* Анимированный фон (без изменений) */
 body::before {
     content: "";
     position: fixed;
@@ -51,63 +50,66 @@ body::after {
     to { transform: rotate(360deg); }
 }
 
-/* --- КОМПАКТНАЯ ШАПКА --- */
+/* --- ШАПКА --- */
 .main-header {
     position: sticky;
     top: 0;
     z-index: 1000;
     width: 100%;
-    /* Уменьшили высоту за счет уменьшения padding */
-    padding: 12px 20px; 
+    padding: 15px 20px; /* Компактная высота */
     background: var(--header-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
     border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
     display: flex;
-    justify-content: center;
+    justify-content: center; /* Центровка по горизонтали */
     align-items: center;
 }
 
-/* --- СТИЛЬНЫЙ ЛОГОТИП --- */
-.main-header h1 {
-    font-family: 'Montserrat', sans-serif; /* Применяем жирный широкий шрифт */
-    font-size: 20px; /* Чуть меньше размер для компактности */
-    font-weight: 900;
-    letter-spacing: 2px; /* Увеличили межбуквенный интервал */
-    text-transform: uppercase;
-    margin: 0;
-    
-    /* Градиент с эффектом стали/стекла */
-    background: linear-gradient(
-        to bottom, 
-        #ffffff 0%, 
-        #ffffff 45%, 
-        #a1a1a1 50%, 
-        #ffffff 55%, 
-        #ffffff 100%
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+.header-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
+.main-header h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 26px; /* Увеличил размер */
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 0;
+    background: linear-gradient(to bottom, #fff, #bbb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* --- АНИМИРОВАННЫЙ BADGE --- */
 .badge {
+    position: absolute; /* Убираем влияние на центровку h1 */
+    right: -55px; /* Смещаем правее заголовка */
     font-family: -apple-system, sans-serif;
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 900;
     color: var(--badge-color);
-    border: 1px solid var(--badge-color);
-    padding: 1px 4px;
-    border-radius: 4px;
-    margin-left: 6px;
-    vertical-align: middle;
-    letter-spacing: 0px;
+    border: 1.5px solid var(--badge-color);
+    padding: 2px 5px;
+    border-radius: 6px;
     background: rgba(48, 209, 88, 0.1);
     text-transform: uppercase;
+    /* Анимация мигания */
+    animation: blink 2s ease-in-out infinite;
+    letter-spacing: 0.5px;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(0.95); }
 }
 
 #content {
     position: relative;
     z-index: 1;
-    padding: 15px;
+    padding: 20px;
 }
