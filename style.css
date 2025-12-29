@@ -1,74 +1,87 @@
 :root {
-    --header-bg: rgba(0, 0, 0, 0.8); /* Полупрозрачный черный */
+    --header-bg: rgba(0, 0, 0, 0.6); 
     --text-color: #ffffff;
-    --badge-color: #30d158; /* Зеленый для FREE */
+    --badge-color: #30d158;
 }
 
-/* Базовые стили */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent; /* Убираем подсветку при тапе */
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    /* Мягкий сине-голубой градиентный фон */
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
-    background-size: 400% 400%; /* Для анимации градиента */
-    animation: gradientShift 15s ease infinite; /* Анимация градиента */
-    color: var(--text-color);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
-    height: 100vh;
-    overflow-x: hidden; /* Убираем горизонтальный скролл */
-}
-
-/* Анимация градиента */
-@keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-/* Шапка сайта */
-.main-header {
-    position: sticky; /* Прилипает к верху при скролле */
-    top: 0;
-    z-index: 1000;
+    margin: 0;
     width: 100%;
-    padding: 20px; /* Отступы вокруг текста */
-    background: var(--header-bg); /* Полупрозрачный фон */
-    backdrop-filter: blur(15px) saturate(180%); /* Эффект "стекла" */
-    -webkit-backdrop-filter: blur(15px) saturate(180%);
-    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1); /* Тонкая полоска снизу */
-    text-align: center; /* Центрируем содержимое шапки */
-}
-
-.header-content {
-    display: inline-block; /* Для выравнивания h1 и badge */
+    height: 100vh;
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    /* Глубокий многослойный фон */
+    background-color: #0a192f;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(30, 60, 114, 0.5) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(42, 82, 152, 0.5) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(20, 30, 48, 0.8) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(0, 210, 255, 0.2) 0px, transparent 50%);
+    background-attachment: fixed;
+    overflow-x: hidden;
     position: relative;
 }
 
+/* Эффект живого движения на фоне */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle at 50% 50%, rgba(10, 132, 255, 0.1), transparent 80%);
+    animation: pulseBg 10s ease-in-out infinite alternate;
+    z-index: -1;
+}
+
+@keyframes pulseBg {
+    0% { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.2) translate(5%, 5%); }
+}
+
+/* Шапка с улучшенным стеклом */
+.main-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    padding: 25px 20px;
+    background: var(--header-bg);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+    text-align: center;
+}
+
 .main-header h1 {
-    font-size: 26px; /* Размер заголовка */
-    font-weight: 700; /* Жирность */
-    letter-spacing: -0.3px; /* Межбуквенный интервал */
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     margin: 0;
+    background: linear-gradient(to bottom, #fff 60%, #aaa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .badge {
-    font-size: 10px;
-    font-weight: bold;
+    font-size: 9px;
+    font-weight: 900;
     color: var(--badge-color);
-    border: 1px solid var(--badge-color);
-    padding: 2px 6px;
-    border-radius: 6px;
-    margin-left: 8px;
-    vertical-align: super; /* Выравнивание по верхнему краю h1 */
+    border: 1px solid rgba(48, 209, 88, 0.4);
+    background: rgba(48, 209, 88, 0.1);
+    padding: 2px 5px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+    text-transform: uppercase;
 }
 
-/* Основной контент (пока пустой) */
 #content {
     padding: 20px;
-    min-height: calc(100vh - 80px); /* Чтобы фон было видно, если контента мало */
 }
