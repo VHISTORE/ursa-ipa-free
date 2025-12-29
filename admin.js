@@ -20,6 +20,7 @@ const provider = new GoogleAuthProvider();
 // Данные Gofile и Admin
 const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35"; 
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
+const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; // Ваш Root ID
 
 let editMode = false;
 let currentEditId = null;
@@ -60,36 +61,16 @@ function updateSubmitButton() {
     }
 }
 
-// --- ИСПРАВЛЕННОЕ ПОЛУЧЕНИЕ DIRECT LINK ---
+// --- ПОЛУЧЕНИЕ DIRECT LINK ДЛЯ ФАЙЛА ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
-        // Шаг 1: Проверяем, является ли контент папкой. Если да — ищем файл внутри.
-        const infoRes = await fetch(`https://api.gofile.io/contents/${contentId}`, {
-            headers: { 'Authorization': `Bearer ${GOFILE_TOKEN}` }
-        });
-        const info = await infoRes.json();
-
-        let targetId = contentId;
-
-        if (info.status === "ok" && info.data.type === "folder") {
-            const childrenKeys = Object.keys(info.data.children);
-            if (childrenKeys.length > 0) {
-                // Берем ID первого файла внутри созданной папки
-                targetId = childrenKeys[0]; 
-                console.log("Targeting file ID inside folder:", targetId);
-            }
-        }
-
-        // Шаг 2: Создаем прямую ссылку для конкретного файла
-        const response = await fetch(`https://api.gofile.io/contents/${targetId}/directlinks`, {
+        const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GOFILE_TOKEN}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                expireTime: 4102444800 // 2100 год
-            })
+            body: JSON.stringify({ expireTime: 4102444800 })
         });
         
         const result = await response.json();
@@ -97,12 +78,11 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
 
         if (result.status === "ok" && result.data && result.data.directLinks) {
             const dl = result.data.directLinks;
-            
-            if (Array.isArray(dl) && dl.length > 0) {
-                return dl[0].link || dl[0].directLink;
-            } else if (typeof dl === 'object') {
+            // Проверка на массив или объект
+            if (Array.isArray(dl) && dl.length > 0) return dl[0].link;
+            if (typeof dl === 'object') {
                 const keys = Object.keys(dl);
-                if (keys.length > 0) return dl[keys[0]].link || dl[keys[0]].directLink;
+                if (keys.length > 0) return dl[keys[0]].link;
             }
         }
 
@@ -111,7 +91,6 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
         }
-        
         return null;
     } catch (e) {
         console.error("DirectLink API Error:", e);
@@ -119,7 +98,7 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
     }
 }
 
-// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА ---
+// --- ЗАГРУЗКА НАПРЯМУЮ В ROOT ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -127,10 +106,11 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
 
     try {
         status.style.color = "white";
-        status.textContent = "🚀 Starting upload...";
+        status.textContent = "🚀 Uploading to Root...";
         
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('folderId', ROOT_FOLDER_ID); // Принудительно в ваш Root
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://upload.gofile.io/uploadfile');
@@ -146,13 +126,13 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔍 Finding File ID...";
-                    const folderId = res.data.id;
+                    status.textContent = "🔗 Creating Direct Link...";
+                    const fileId = res.data.id; // Теперь это ID файла
                     
-                    // Ждем немного, чтобы Gofile проиндексировал содержимое новой папки
-                    await new Promise(r => setTimeout(r, 2000));
+                    // Небольшая задержка для индексации
+                    await new Promise(r => setTimeout(r, 1500));
 
-                    const directUrl = await createAndGetDirectLink(folderId);
+                    const directUrl = await createAndGetDirectLink(fileId);
                     const finalUrl = directUrl || res.data.downloadPage;
                     
                     hiddenInput.value = finalUrl; 
