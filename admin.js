@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -17,8 +17,9 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
+let editMode = false;
+let currentEditId = null;
 
-// Элементы
 const authContainer = document.getElementById('auth-container');
 const adminMain = document.getElementById('admin-main');
 const loginBtn = document.getElementById('login-btn');
@@ -26,8 +27,8 @@ const logoutBtn = document.getElementById('logout-btn');
 const adminEmailSpan = document.getElementById('admin-email');
 const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
+const submitBtn = document.getElementById('submit-btn');
 
-// 1. Проверка авторизации
 onAuthStateChanged(auth, (user) => {
     if (user && user.email === ADMIN_EMAIL) {
         authContainer.style.display = 'none';
@@ -35,63 +36,82 @@ onAuthStateChanged(auth, (user) => {
         adminEmailSpan.textContent = `Admin: ${user.email}`;
         loadInventory();
     } else {
-        if (user) {
-            alert("Access Denied: You are not authorized.");
-            signOut(auth);
-        }
+        if (user) { alert("Access Denied"); signOut(auth); }
         authContainer.style.display = 'block';
         adminMain.style.display = 'none';
     }
 });
 
-// 2. Вход/Выход
 loginBtn.onclick = () => signInWithPopup(auth, provider);
 logoutBtn.onclick = () => signOut(auth);
 
-// 3. Загрузка списка для удаления
 async function loadInventory() {
-    adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Loading inventory...</p>';
-    try {
-        const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
-        const snap = await getDocs(q);
-        adminAppList.innerHTML = '';
+    adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Loading...</p>';
+    const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
+    const snap = await getDocs(q);
+    adminAppList.innerHTML = '';
 
-        snap.forEach((appDoc) => {
-            const data = appDoc.data();
-            const div = document.createElement('div');
-            div.className = 'admin-item';
-            div.innerHTML = `
-                <div class="admin-item-info">
-                    <img src="${data.icon_url}" width="30">
-                    <span>${data.name} (v${data.version})</span>
+    snap.forEach((appDoc) => {
+        const data = appDoc.data();
+        const div = document.createElement('div');
+        div.className = 'admin-item';
+        div.innerHTML = `
+            <div class="admin-item-info">
+                <img src="${data.icon_url}" width="35">
+                <div>
+                    <strong>${data.name}</strong><br>
+                    <small style="opacity:0.5">v${data.version}</small>
                 </div>
+            </div>
+            <div class="admin-item-actions">
+                <button class="edit-btn" data-id="${appDoc.id}">Edit</button>
                 <button class="del-btn" data-id="${appDoc.id}">Delete</button>
-            `;
-            adminAppList.appendChild(div);
-        });
+            </div>
+        `;
+        adminAppList.appendChild(div);
+    });
 
-        // Слушатели для кнопок удаления
-        document.querySelectorAll('.del-btn').forEach(btn => {
-            btn.onclick = async () => {
-                if(confirm(`Delete ${btn.previousElementSibling.textContent}?`)) {
-                    await deleteDoc(doc(db, "apps", btn.dataset.id));
-                    loadInventory(); // Обновляем список
-                }
-            };
-        });
-    } catch (e) {
-        console.error(e);
-    }
+    document.querySelectorAll('.del-btn').forEach(btn => {
+        btn.onclick = async () => {
+            if(confirm('Delete app?')) {
+                await deleteDoc(doc(db, "apps", btn.dataset.id));
+                loadInventory();
+            }
+        };
+    });
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.onclick = () => startEdit(btn.dataset.id, snap);
+    });
 }
 
-// 4. Добавление нового приложения
+function startEdit(id, snap) {
+    const appData = snap.docs.find(d => d.id === id).data();
+    currentEditId = id;
+    editMode = true;
+
+    document.getElementById('name').value = appData.name;
+    document.getElementById('section').value = appData.section;
+    document.getElementById('category').value = appData.category;
+    document.getElementById('version').value = appData.version;
+    document.getElementById('size').value = appData.size;
+    document.getElementById('bundle_id').value = appData.bundle_id;
+    document.getElementById('icon_url').value = appData.icon_url;
+    document.getElementById('download_url').value = appData.download_url;
+    document.getElementById('min_ios').value = appData.min_ios;
+    document.getElementById('features').value = appData.features;
+    document.getElementById('description').value = appData.description;
+
+    submitBtn.innerText = "Update Application";
+    submitBtn.style.background = "#30d158";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const submitBtn = document.getElementById('submit-btn');
     submitBtn.disabled = true;
-    submitBtn.innerText = "Processing...";
 
-    const newApp = {
+    const appObj = {
         name: document.getElementById('name').value,
         section: document.getElementById('section').value,
         category: document.getElementById('category').value.toLowerCase(),
@@ -103,19 +123,28 @@ form.addEventListener('submit', async (e) => {
         min_ios: document.getElementById('min_ios').value,
         features: document.getElementById('features').value || "Original",
         description: document.getElementById('description').value,
-        views: 0,
         upload_date: serverTimestamp()
     };
 
     try {
-        await addDoc(collection(db, "apps"), newApp);
-        alert("App published!");
-        form.reset();
+        if (editMode) {
+            await updateDoc(doc(db, "apps", currentEditId), appObj);
+            alert("App updated!");
+        } else {
+            appObj.views = 0;
+            await addDoc(collection(db, "apps"), appObj);
+            alert("App added!");
+        }
+        resetForm();
         loadInventory();
-    } catch (error) {
-        alert("Error: " + error.message);
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Publish App";
-    }
+    } catch (err) { alert(err.message); }
+    submitBtn.disabled = false;
 });
+
+function resetForm() {
+    form.reset();
+    editMode = false;
+    currentEditId = null;
+    submitBtn.innerText = "Publish App";
+    submitBtn.style.background = "var(--accent)";
+}
