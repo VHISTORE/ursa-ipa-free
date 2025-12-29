@@ -22,11 +22,15 @@ const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35";
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; 
 
+// --- НАСТРОЙКА УВЕДОМЛЕНИЙ ---
+// ВСТАВЬТЕ СЮДА ВАШ LEGACY SERVER KEY ИЗ НАСТРОЕК FIREBASE
+const SERVER_KEY = "ЗДЕСЬ_ВАШ_КЛЮЧ_СЕРВЕРА"; 
+
 let editMode = false;
 let currentEditId = null;
 let isIconUploaded = false;
 let isIpaUploaded = false;
-let allApps = []; // Массив для локального поиска
+let allApps = []; 
 
 const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
@@ -34,6 +38,42 @@ const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
 const searchInput = document.getElementById('inventory-search');
+
+// --- УТИЛИТА ОТПРАВКИ ПУША ---
+async function sendPushNotification(appName, version, isNew) {
+    if (!SERVER_KEY || SERVER_KEY === "ЗДЕСЬ_ВАШ_КЛЮЧ_СЕРВЕРА") {
+        console.warn("Server Key not set. Notification skipped.");
+        return;
+    }
+
+    const title = isNew ? "🆕 New IPA Available!" : "🆙 New Update!";
+    const body = `${appName} | v${version} ${isNew ? 'is now added' : 'has been updated'} in URSA IPA.`;
+
+    try {
+        const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `key=${SERVER_KEY}`
+            },
+            body: JSON.stringify({
+                to: "/topics/all",
+                notification: {
+                    title: title,
+                    body: body,
+                    icon: "https://vhistore.github.io/ursa-ipa-free/icons/logoursa.jpeg",
+                    click_action: "https://vhistore.github.io/ursa-ipa-free/",
+                    sound: "default"
+                },
+                priority: "high"
+            })
+        });
+        const result = await response.json();
+        console.log("FCM Result:", result);
+    } catch (e) {
+        console.error("Push Error:", e);
+    }
+}
 
 // --- УТИЛИТА ДЛЯ РАЗМЕРА ФАЙЛА ---
 function formatBytes(bytes, decimals = 2) {
@@ -86,13 +126,9 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         });
         
         const result = await response.json();
-        console.log(`DirectLink Attempt ${retryCount + 1}:`, result);
-
         if (result.status === "ok" && result.data) {
             const data = result.data;
             if (data.link) return data.link;
-            if (data.directLink) return data.directLink;
-
             const deepSearch = (obj) => {
                 for (let key in obj) {
                     if (typeof obj[key] === 'string' && obj[key].startsWith('http')) return obj[key];
@@ -103,20 +139,15 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
                 }
                 return null;
             };
-
             const foundUrl = deepSearch(data);
             if (foundUrl) return foundUrl;
         }
-
         if (retryCount < 5) {
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
         }
         return null;
-    } catch (e) {
-        console.error("DirectLink Error:", e);
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
 // --- ЗАГРУЗКА ФАЙЛА ---
@@ -125,7 +156,6 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const progress = document.getElementById(progressId);
     const hiddenInput = document.getElementById(hiddenInputId);
 
-    // АВТОМАТИЧЕСКОЕ СЧИТЫВАНИЕ РАЗМЕРА ДЛЯ IPA
     if (hiddenInputId === 'download_url') {
         document.getElementById('size').value = formatBytes(file.size);
     }
@@ -133,7 +163,6 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
     try {
         status.style.color = "white";
         status.textContent = "🚀 Starting upload...";
-        
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folderId', ROOT_FOLDER_ID);
@@ -187,7 +216,7 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
-// --- СИСТЕМА ИНВЕНТАРЯ И ПОИСКА ---
+// --- СИСТЕМА ИНВЕНТАРЯ ---
 async function loadInventory() {
     adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
     try {
@@ -260,7 +289,6 @@ function startEdit(id, appData) {
         const el = document.getElementById(f);
         if (el) el.value = appData[f] || '';
     });
-    
     document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
     submitBtn.style.background = "#30d158";
     updateSubmitButton();
@@ -270,11 +298,15 @@ function startEdit(id, appData) {
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
+
+    const appName = document.getElementById('name').value;
+    const appVersion = document.getElementById('version').value;
+
     const appObj = {
-        name: document.getElementById('name').value,
+        name: appName,
         section: document.getElementById('section').value,
         category: document.getElementById('category').value.toLowerCase(),
-        version: document.getElementById('version').value,
+        version: appVersion,
         size: document.getElementById('size').value,
         bundle_id: document.getElementById('bundle_id').value,
         icon_url: document.getElementById('icon_url').value, 
@@ -284,16 +316,21 @@ form.addEventListener('submit', async (e) => {
         description: document.getElementById('description').value,
         upload_date: serverTimestamp()
     };
+
     try {
         if (editMode) {
             await updateDoc(doc(db, "apps", currentEditId), appObj);
+            // Отправляем пуш (Update)
+            await sendPushNotification(appName, appVersion, false);
         } else {
             appObj.views = 0;
             await addDoc(collection(db, "apps"), appObj);
+            // Отправляем пуш (New)
+            await sendPushNotification(appName, appVersion, true);
         }
         resetForm();
         loadInventory();
-        alert("Success!");
+        alert("Success! Data saved and notification sent.");
     } catch (err) { alert(err.message); }
     submitBtn.disabled = false;
 });
