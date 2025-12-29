@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// Конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
     authDomain: "ursaipa.firebaseapp.com",
@@ -16,6 +17,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+// Данные Gofile и Admin
 const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM"; 
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 
@@ -24,6 +26,7 @@ let currentEditId = null;
 let isIconUploaded = false;
 let isIpaUploaded = false;
 
+// Элементы интерфейса
 const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
@@ -47,6 +50,7 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
 document.getElementById('logout-btn').onclick = () => signOut(auth);
 
+// --- ПРОВЕРКА ГОТОВНОСТИ КНОПКИ ---
 function updateSubmitButton() {
     if (isIconUploaded && isIpaUploaded) {
         submitBtn.disabled = false;
@@ -57,7 +61,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- СОЗДАНИЕ DIRECT LINK (МАЙ 2025) ---
+// --- СОЗДАНИЕ DIRECT LINK (API МАЙ 2025) ---
 async function createDirectLink(contentId) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -68,22 +72,20 @@ async function createDirectLink(contentId) {
             },
             body: JSON.stringify({}) 
         });
-        
         const result = await response.json();
-        console.log("DirectLink API Response:", result);
-
+        
+        // Проверка структуры ответа согласно документации
         if (result.status === "ok" && result.data && result.data.directLinks && result.data.directLinks.length > 0) {
-            // Пытаемся взять поле 'link', если его нет - поле 'url'
             return result.data.directLinks[0].link || result.data.directLinks[0].url;
         }
         return null;
     } catch (e) {
-        console.error("DirectLink Error:", e);
+        console.error("DirectLink API Error:", e);
         return null;
     }
 }
 
-// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА ---
+// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА НА GOFILE ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -91,52 +93,51 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
 
     try {
         status.style.color = "white";
-        status.textContent = "🚀 Starting upload...";
+        status.textContent = "🚀 Uploading to Gofile...";
         
         const formData = new FormData();
         formData.append('file', file);
 
         const xhr = new XMLHttpRequest();
+        // Используем глобальный эндпоинт для прямой загрузки
         xhr.open('POST', 'https://upload.gofile.io/uploadfile');
         xhr.setRequestHeader('Authorization', `Bearer ${GOFILE_TOKEN}`);
 
         xhr.upload.onprogress = (e) => {
             const percent = (e.loaded / e.total) * 100;
             progress.style.width = percent + "%";
-            status.textContent = `Uploading: ${Math.round(percent)}%`;
+            status.textContent = `Progress: ${Math.round(percent)}%`;
         };
 
         xhr.onload = async function() {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔗 Processing Direct Link...";
+                    status.textContent = "🔗 Indexing file...";
                     const contentId = res.data.id;
                     
-                    // Ждем 1.5 сек, чтобы Gofile проиндексировал файл (решает ошибку undefined)
+                    // Задержка 1.5 сек для индексации на серверах Gofile
                     await new Promise(r => setTimeout(r, 1500));
 
                     const directUrl = await createDirectLink(contentId);
-
-                    if (directUrl) {
-                        hiddenInput.value = directUrl; 
-                        status.textContent = "✅ Direct Link Ready!";
-                        status.style.color = "#30d158";
-                        progress.style.background = "#30d158";
-
-                        if (hiddenInputId === 'icon_url') {
-                            isIconUploaded = true;
-                            document.getElementById('icon-preview').innerHTML = `<img src="${directUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
-                        } else {
-                            isIpaUploaded = true;
-                        }
-                        updateSubmitButton();
+                    
+                    // Если прямая ссылка создана - берем её, иначе стандартную страницу
+                    const finalUrl = directUrl || res.data.downloadPage;
+                    
+                    hiddenInput.value = finalUrl; 
+                    status.textContent = directUrl ? "✅ Direct Link Ready!" : "✅ Link Ready!";
+                    status.style.color = "#30d158";
+                    progress.style.background = "#30d158";
+                    
+                    if (hiddenInputId === 'icon_url') {
+                        isIconUploaded = true;
+                        document.getElementById('icon-preview').innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
                     } else {
-                        status.textContent = "❌ DirectLink failed";
-                        status.style.color = "#ff453a";
+                        isIpaUploaded = true;
                     }
+                    updateSubmitButton();
                 } else {
-                    status.textContent = "❌ Error: " + res.status;
+                    status.textContent = "❌ Upload Error: " + res.status;
                 }
             } catch (e) {
                 status.textContent = "❌ Server error";
@@ -156,12 +157,12 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
-// --- ИНВЕНТАРЬ ---
+// --- Firestore Inventory ---
 async function loadInventory() {
-    const list = document.getElementById('admin-app-list');
+    adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
     const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
     const snap = await getDocs(q);
-    list.innerHTML = '';
+    adminAppList.innerHTML = '';
 
     snap.forEach((appDoc) => {
         const data = appDoc.data();
@@ -177,7 +178,7 @@ async function loadInventory() {
                 <button class="del-btn" data-id="${appDoc.id}">Delete</button>
             </div>
         `;
-        list.appendChild(div);
+        adminAppList.appendChild(div);
     });
 
     document.querySelectorAll('.del-btn').forEach(btn => {
@@ -220,7 +221,6 @@ function startEdit(id, appData) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- ОТПРАВКА В Базу ---
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
