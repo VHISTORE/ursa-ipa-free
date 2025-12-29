@@ -32,7 +32,6 @@ window.shareApp = (bundleId) => {
             url: shareUrl,
         }).catch(console.error);
     } else {
-        // Fallback: Copy to clipboard
         const el = document.createElement('textarea');
         el.value = shareUrl;
         document.body.appendChild(el);
@@ -57,7 +56,7 @@ function formatDate(timestamp) {
 }
 
 /**
- * Creates an application card element used in both main list and search
+ * Creates an application card element
  */
 function createAppCard(appData) {
     const card = document.createElement('div');
@@ -75,7 +74,6 @@ function createAppCard(appData) {
     `;
 
     card.addEventListener('click', () => {
-        // If search overlay is open, close it before showing details
         if (document.getElementById('search-overlay').classList.contains('active')) {
             toggleSearch(false);
         }
@@ -94,7 +92,7 @@ function renderAppCard(appData) {
 }
 
 /**
- * Generates category buttons dynamically based on Firestore data
+ * Generates category buttons
  */
 async function renderCategoryBar(sectionName) {
     const bar = document.getElementById('category-bar');
@@ -134,7 +132,7 @@ async function renderCategoryBar(sectionName) {
 }
 
 /**
- * Opens modal with the RECTANGULAR share button positioned between Name and Bundle ID
+ * Opens modal
  */
 function openModal(appData) {
     const overlay = document.getElementById('modal-overlay');
@@ -145,12 +143,10 @@ function openModal(appData) {
             <img src="${appData.icon_url}" class="modal-icon-big" onerror="this.src='https://via.placeholder.com/60'">
             <div class="modal-title-wrap">
                 <h2>${appData.name}</h2>
-                
                 <button class="share-btn-rect" onclick="shareApp('${appData.bundle_id}')">
                     <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share">
                     <span>SHARE</span>
                 </button>
-
                 <p class="bundle-id-text">${appData.bundle_id}</p>
             </div>
         </div>
@@ -166,51 +162,26 @@ function openModal(appData) {
     `;
     overlay.classList.add('active');
 
-    // Update URL parameter without reloading the page
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
 }
 
 /**
- * Closes the modal and cleans up the URL
+ * Closes modal
  */
 const closeModal = () => {
     document.getElementById('modal-overlay').classList.remove('active');
-    // Clear URL parameter on close
     const cleanUrl = `${window.location.origin}${window.location.pathname}`;
     window.history.pushState({ path: cleanUrl }, '', cleanUrl);
 };
 
-// Modal Close Listeners
 document.getElementById('close-modal').addEventListener('click', closeModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target.id === 'modal-overlay') closeModal();
 });
 
 /**
- * Checks for Deep Links on page load
- */
-async function checkDeepLink() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const appId = urlParams.get('id');
-    
-    if (appId) {
-        try {
-            const colRef = collection(db, "apps");
-            const q = query(colRef, where("bundle_id", "==", appId));
-            const snap = await getDocs(q);
-            
-            if (!snap.empty) {
-                openModal(snap.docs[0].data());
-            }
-        } catch (e) {
-            console.error("Deep Link check failed:", e);
-        }
-    }
-}
-
-/**
- * Fetches apps from Firebase with section and category filtering
+ * Fetches apps from Firebase
  */
 async function loadApps(sectionName, category = 'All') {
     const appList = document.getElementById('app-list');
@@ -243,11 +214,28 @@ async function loadApps(sectionName, category = 'All') {
         querySnapshot.forEach((doc) => renderAppCard(doc.data()));
     } catch (e) {
         console.error("Firebase Error:", e);
-        if (e.code === 'failed-precondition') {
-            appList.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fff;">Index required. Check browser console (F12) for link.</div>';
-        } else {
-            appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error: ${e.code}</div>`;
-        }
+        appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading apps</div>`;
+    }
+}
+
+/**
+ * Stats logic for More section
+ */
+async function updateStats() {
+    try {
+        const snap = await getDocs(collection(db, "apps"));
+        let totalViews = 0;
+        snap.forEach(doc => {
+            totalViews += (doc.data().views || 0);
+        });
+
+        const filesEl = document.getElementById('stat-files');
+        const viewsEl = document.getElementById('stat-views');
+        
+        if (filesEl) filesEl.textContent = snap.size;
+        if (viewsEl) viewsEl.textContent = totalViews.toLocaleString();
+    } catch (e) {
+        console.error("Stats error:", e);
     }
 }
 
@@ -300,16 +288,13 @@ async function performSearch(term) {
     }
 }
 
-// Search Input Listeners
 searchInput.addEventListener('input', (e) => performSearch(e.target.value));
-
 clearSearchBtn.addEventListener('click', () => {
     searchInput.value = '';
     searchResults.innerHTML = '';
     clearSearchBtn.style.display = 'none';
     searchInput.focus();
 });
-
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
 /**
@@ -330,22 +315,85 @@ document.querySelectorAll('.nav-item').forEach(button => {
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         
-        if (target === 'games' || target === 'apps') {
+        if (target === 'more') {
+            document.getElementById('category-bar').innerHTML = '';
+            document.getElementById('app-list').innerHTML = `
+                <div class="more-page">
+                    <div class="more-header-brand">
+                        <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
+                        <h2>URSA IPA Company</h2>
+                    </div>
+
+                    <div class="more-group">
+                        <div class="stats-card">
+                            <div class="stat-box">
+                                <span class="stat-value" id="stat-files">...</span>
+                                <span class="stat-label">FILES</span>
+                            </div>
+                            <div class="stat-divider"></div>
+                            <div class="stat-box">
+                                <span class="stat-value" id="stat-views">...</span>
+                                <span class="stat-label">TOTAL VIEWS</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="more-group">
+                        <a href="https://t.me/ursa_ipa" target="_blank" class="more-item-link">
+                            <div class="more-item-content">
+                                <span class="item-icon">✈️</span>
+                                <span>Telegram Channel</span>
+                            </div>
+                            <span class="arrow">›</span>
+                        </a>
+                        <div class="more-item-link" onclick="alert('Donation system coming soon!')">
+                            <div class="more-item-content">
+                                <span class="item-icon">💎</span>
+                                <span>Support Author</span>
+                            </div>
+                            <span class="arrow">›</span>
+                        </div>
+                    </div>
+
+                    <div class="more-footer">
+                        <p>© 2025 URSA IPA Project</p>
+                    </div>
+                </div>
+            `;
+            updateStats();
+        } else {
             currentSection = target;
             currentCategory = 'All';
             renderCategoryBar(target);
             loadApps(target);
-        } else {
-            document.getElementById('category-bar').innerHTML = '';
-            document.getElementById('app-list').innerHTML = `
-                <div style="text-align:center; padding:50px; opacity:0.5;">${target.toUpperCase()} section coming soon</div>
-            `;
         }
     });
 });
 
 /**
- * Entry Point: Start Application
+ * Checks for Deep Links
+ */
+async function checkDeepLink() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const appId = urlParams.get('id');
+    
+    if (appId) {
+        try {
+            const colRef = collection(db, "apps");
+            const q = query(colRef, where("bundle_id", "==", appId));
+            const snap = await getDocs(q);
+            
+            if (!snap.empty) {
+                openModal(snap.docs[0].data());
+            }
+        } catch (e) {
+            console.error("Deep Link check failed:", e);
+        }
+    }
+}
+
+/**
+ * Entry Point
  */
 window.addEventListener('DOMContentLoaded', () => {
     renderCategoryBar('games');
