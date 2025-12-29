@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// Конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
     authDomain: "ursaipa.firebaseapp.com",
@@ -16,7 +17,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM"; 
+const GOFILE_TOKEN = "yJlIY71QaZ5WZ9cdI18Ig7QuwwEvYMZM";
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 
 let editMode = false;
@@ -38,7 +39,7 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('admin-email').textContent = user.email;
         loadInventory();
     } else {
-        if (user) { alert("Access Denied"); signOut(auth); }
+        if (user) signOut(auth);
         authContainer.style.display = 'block';
         adminMain.style.display = 'none';
     }
@@ -57,7 +58,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- СОЗДАНИЕ DIRECT LINK (МАЙ 2025) ---
+// --- НОВОЕ: ПОЛУЧЕНИЕ ПРЯМОЙ ССЫЛКИ (API МАЙ 2025) ---
 async function createDirectLink(contentId) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -69,8 +70,8 @@ async function createDirectLink(contentId) {
             body: JSON.stringify({}) 
         });
         const result = await response.json();
-        if (result.status === "ok") {
-            return result.data.directLinks[0].link; // Возвращаем прямую ссылку
+        if (result.status === "ok" && result.data.directLinks.length > 0) {
+            return result.data.directLinks[0].link;
         }
         return null;
     } catch (e) {
@@ -79,15 +80,15 @@ async function createDirectLink(contentId) {
     }
 }
 
-// --- ЗАГРУЗКА НА GOFILE (API МАЙ 2025) ---
+// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
     const hiddenInput = document.getElementById(hiddenInputId);
 
     try {
-        status.style.color = "var(--text-secondary)";
-        status.textContent = "🚀 Uploading...";
+        status.style.color = "white";
+        status.textContent = "🚀 Starting upload...";
         
         const formData = new FormData();
         formData.append('file', file);
@@ -103,36 +104,40 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         };
 
         xhr.onload = async function() {
-            const res = JSON.parse(xhr.responseText);
-            if (res.status === "ok") {
-                status.textContent = "🔗 Generating Direct Link...";
-                
-                // Сразу после загрузки создаем прямую ссылку
-                const directUrl = await createDirectLink(res.data.id);
-                
-                if (directUrl) {
-                    hiddenInput.value = directUrl; 
-                    status.textContent = "✅ Ready!";
-                    status.style.color = "#30d158";
-                    progress.style.background = "#30d158";
+            try {
+                const res = JSON.parse(xhr.responseText);
+                if (res.status === "ok") {
+                    status.textContent = "🔗 Creating Direct Link...";
                     
-                    if (hiddenInputId === 'icon_url') {
-                        isIconUploaded = true;
-                        document.getElementById('icon-preview').innerHTML = `<img src="${directUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+                    // Генерируем прямую ссылку
+                    const directUrl = await createDirectLink(res.data.id);
+                    
+                    if (directUrl) {
+                        hiddenInput.value = directUrl; // Сохраняем прямую ссылку в скрытый инпут
+                        status.textContent = "✅ Ready!";
+                        status.style.color = "#30d158";
+                        progress.style.background = "#30d158";
+                        
+                        if (hiddenInputId === 'icon_url') {
+                            isIconUploaded = true;
+                            document.getElementById('icon-preview').innerHTML = `<img src="${directUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+                        } else {
+                            isIpaUploaded = true;
+                        }
+                        updateSubmitButton();
                     } else {
-                        isIpaUploaded = true;
+                        status.textContent = "❌ DirectLink failed";
                     }
-                    updateSubmitButton();
                 } else {
-                    status.textContent = "❌ DirectLink failed";
+                    status.textContent = "❌ Error: " + res.status;
                 }
-            } else {
-                status.textContent = "❌ Error: " + res.status;
+            } catch (e) {
+                status.textContent = "❌ Server error";
             }
         };
         xhr.send(formData);
     } catch (err) {
-        status.textContent = "❌ Connection error";
+        status.textContent = "❌ Connection failed";
     }
 }
 
@@ -144,7 +149,7 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
-// --- Firestore Inventory ---
+// --- ИНВЕНТАРЬ ---
 async function loadInventory() {
     adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
     const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
@@ -208,6 +213,7 @@ function startEdit(id, appData) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// --- ОТПРАВКА В FIREBASE ---
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
@@ -219,8 +225,8 @@ form.addEventListener('submit', async (e) => {
         version: document.getElementById('version').value,
         size: document.getElementById('size').value,
         bundle_id: document.getElementById('bundle_id').value,
-        icon_url: document.getElementById('icon_url').value,
-        download_url: document.getElementById('download_url').value,
+        icon_url: document.getElementById('icon_url').value, // Здесь будет прямая ссылка
+        download_url: document.getElementById('download_url').value, // Здесь будет прямая ссылка
         min_ios: document.getElementById('min_ios').value,
         features: document.getElementById('features').value || "Original",
         description: document.getElementById('description').value,
@@ -230,13 +236,14 @@ form.addEventListener('submit', async (e) => {
     try {
         if (editMode) {
             await updateDoc(doc(db, "apps", currentEditId), appObj);
+            alert("Updated!");
         } else {
             appObj.views = 0;
             await addDoc(collection(db, "apps"), appObj);
+            alert("Added!");
         }
         resetForm();
         loadInventory();
-        alert("Success!");
     } catch (err) { alert(err.message); }
     submitBtn.disabled = false;
 });
