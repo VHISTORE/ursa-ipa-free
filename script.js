@@ -32,23 +32,17 @@ let currentSection = 'games';
 let currentCategory = 'All';
 
 /**
- * Push Notifications Logic (iOS & Android Compatible)
+ * Push Notifications Logic (GitHub Pages & iOS Optimized)
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
     
-    // Проверка поддержки API уведомлений в браузере
-    if (!('Notification' in window)) {
-        alert("Уведомления не поддерживаются этим браузером.");
-        return;
-    }
-
     // Проверка для iOS: работает ли сайт как PWA (добавлен на рабочий стол)
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
     if (isIOS && !isStandalone) {
-        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' в Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с иконки на рабочем столе и попробуйте снова!");
+        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' внизу Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с рабочего стола!");
         return;
     }
 
@@ -59,8 +53,19 @@ window.activateNotifications = async function() {
         const permission = await Notification.requestPermission();
         
         if (permission === 'granted') {
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ ДЛЯ GITHUB PAGES:
+            // Получаем существующую регистрацию Service Worker
+            const registration = await navigator.serviceWorker.getRegistration();
+            
+            if (!registration) {
+                alert("Service Worker не найден. Пожалуйста, обновите страницу.");
+                return;
+            }
+
+            // Передаем регистрацию в getToken, чтобы избежать ошибки 404
             const token = await getToken(messaging, { 
-                vapidKey: 'BMAUf9qk8ZkeepGWcHaffFfutJ7rAvavjGF4dvhWYZ3aUuswVAfiF2h6Pc6ZNZqT0UlkxXYT0pmJZis2LNIJBvc' 
+                vapidKey: 'BMAUf9qk8ZkeepGWcHaffFfutJ7rAvavjGF4dvhWYZ3aUuswVAfiF2h6Pc6ZNZqT0UlkxXYT0pmJZis2LNIJBvc',
+                serviceWorkerRegistration: registration
             });
             
             if (token) {
@@ -71,20 +76,20 @@ window.activateNotifications = async function() {
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
-                alert("✅ Уведомления успешно включены! Вы будете получать сообщения об обновлениях IPA.");
+                alert("✅ Уведомления включены!");
             }
         } else {
             if (statusEl) statusEl.textContent = 'OFF';
-            alert("❌ Доступ запрещен. Включите уведомления в настройках вашего браузера/iOS.");
+            alert("❌ Доступ запрещен. Проверьте настройки уведомлений в браузере.");
         }
     } catch (error) {
         console.error("Notification Error:", error);
         if (statusEl) statusEl.textContent = 'OFF';
-        alert("Система уведомлений временно недоступна.");
+        alert("Система уведомлений недоступна: " + error.message);
     }
 };
 
-// Прослушивание сообщений, когда сайт открыт (Foreground)
+// Прослушивание сообщений, когда сайт открыт
 onMessage(messaging, (payload) => {
     console.log('Message received. ', payload);
     alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
@@ -109,7 +114,7 @@ window.shareApp = (bundleId) => {
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
-        alert('Ссылка скопирована!');
+        alert('Link copied to clipboard!');
     }
 };
 
@@ -422,7 +427,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
                             </div>
                             <span class="arrow">›</span>
                         </div>
-                        <div class="more-item-link notify-btn" onclick="window.activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
+                        <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
                             <div class="more-item-content">
                                 <span class="item-icon">🔔</span>
                                 <span>IPA Notifications</span>
