@@ -8,11 +8,15 @@
 </head>
 <body>
     <div id="auth-container" class="admin-container">
-        <header><h1>URSA Admin Access</h1></header>
+        <header>
+            <h1>URSA Admin Access</h1>
+        </header>
         <div class="admin-section" style="text-align: center;">
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Sign in to manage apps.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Sign in to manage apps and uploads.</p>
             <button id="login-btn">Sign in with Google</button>
-            <div style="margin-top: 20px;"><a href="index.html" class="back-link">← Back to Site</a></div>
+            <div style="margin-top: 20px;">
+                <a href="index.html" class="back-link">← Back to Site</a>
+            </div>
         </div>
     </div>
 
@@ -27,18 +31,32 @@
         </header>
 
         <section class="admin-section">
+            <h3>Quick Upload (Gofile)</h3>
+            <div class="upload-zone">
+                <input type="file" id="file-input" accept=".ipa,.zip">
+                <div id="upload-status">Select .ipa file to start upload</div>
+                <div class="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section">
             <h3 id="form-title">Editor</h3>
             <form id="add-app-form">
+                <input type="hidden" id="download_url">
+                
                 <div class="form-group">
                     <label>App Name</label>
                     <input type="text" id="name" required placeholder="Name">
                 </div>
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label>Section</label>
                         <select id="section" required>
-                            <option value="games">Games</option>
-                            <option value="apps">Apps</option>
+                            <option value="games">🕹 Games</option>
+                            <option value="apps">📱 Apps</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -46,6 +64,7 @@
                         <input type="text" id="category" required placeholder="Action">
                     </div>
                 </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Version</label>
@@ -56,23 +75,62 @@
                         <input type="text" id="size" required placeholder="100 MB">
                     </div>
                 </div>
-                <div class="form-group"><label>Bundle ID</label><input type="text" id="bundle_id" required></div>
-                <div class="form-group"><label>Icon URL</label><input type="url" id="icon_url" required></div>
-                <div class="form-group"><label>IPA URL</label><input type="url" id="download_url" required></div>
-                <div class="form-row">
-                    <div class="form-group"><label>Min iOS</label><input type="text" id="min_ios" required></div>
-                    <div class="form-group"><label>Features</label><input type="text" id="features"></div>
+
+                <div class="form-group">
+                    <label>Bundle ID</label>
+                    <input type="text" id="bundle_id" required placeholder="com.example.app">
                 </div>
-                <div class="form-group"><label>Description</label><textarea id="description" rows="3"></textarea></div>
+
+                <div class="form-group">
+                    <label>Icon URL</label>
+                    <input type="url" id="icon_url" required placeholder="https://...">
+                </div>
+
+                <div class="form-group">
+                    <label>IPA Direct Link (Manual)</label>
+                    <input type="url" id="manual_url_display" placeholder="Will be filled automatically after upload or enter manually">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Min iOS</label>
+                        <input type="text" id="min_ios" required placeholder="15.0">
+                    </div>
+                    <div class="form-group">
+                        <label>Features</label>
+                        <input type="text" id="features" placeholder="Mod Menu / Premium">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" rows="3" placeholder="Enter app details..."></textarea>
+                </div>
+
                 <button type="submit" id="submit-btn">Publish App</button>
             </form>
         </section>
 
         <section class="admin-section">
-            <h3>Inventory</h3>
-            <div id="admin-app-list" class="admin-list"></div>
+            <div class="section-header">
+                <h3>Inventory</h3>
+                <span class="refresh-hint">Click "Edit" to load into Editor</span>
+            </div>
+            <div id="admin-app-list" class="admin-list">
+                </div>
         </section>
+
+        <footer class="admin-footer" style="text-align: center; opacity: 0.3; font-size: 10px; margin-top: 20px;">
+            URSA IPA Management System • 2025
+        </footer>
     </div>
+
     <script type="module" src="admin.js"></script>
+    <script>
+        // Небольшой вспомогательный скрипт для синхронизации полей URL
+        document.getElementById('manual_url_display').addEventListener('input', function(e) {
+            document.getElementById('download_url').value = e.target.value;
+        });
+    </script>
 </body>
 </html>
