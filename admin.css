@@ -8,44 +8,38 @@ body {
 
 .admin-container {
     max-width: 600px;
-    margin: 0 auto;
+    margin: 20px auto;
     background: #1c1c1e;
     padding: 30px;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-header {
+.header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
 }
 
-h1 { font-size: 22px; font-weight: 800; }
-
-.back-link {
-    color: #007aff;
-    text-decoration: none;
-    font-size: 14px;
+header {
+    border-bottom: 1px solid #3a3a3c;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
 }
 
-.form-group {
-    margin-bottom: 20px;
-    display: flex;
-    flex-direction: column;
-}
+h1 { font-size: 24px; font-weight: 800; margin: 5px 0; }
+h3 { color: #8e8e93; margin-bottom: 15px; }
 
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
+.back-link { color: #007aff; text-decoration: none; font-size: 14px; }
+
+.form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
 label {
-    font-size: 12px;
+    font-size: 11px;
     color: #8e8e93;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     text-transform: uppercase;
     font-weight: 700;
 }
@@ -54,26 +48,71 @@ input, select, textarea {
     background: #2c2c2e;
     border: 1px solid #3a3a3c;
     border-radius: 10px;
-    padding: 12px;
+    padding: 10px;
     color: #fff;
-    font-size: 16px;
+    font-size: 14px;
     outline: none;
 }
 
 input:focus { border-color: #007aff; }
 
-button {
+#submit-btn, #login-btn {
     width: 100%;
     background: #007aff;
     color: #fff;
     border: none;
-    padding: 16px;
+    padding: 14px;
     border-radius: 12px;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     cursor: pointer;
-    margin-top: 20px;
-    transition: opacity 0.2s;
+    margin-top: 10px;
 }
 
-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.logout-btn {
+    background: #3a3a3c;
+    color: #ff453a;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* Стили списка инвентаря */
+.admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-item {
+    background: #2c2c2e;
+    padding: 12px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-item-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.admin-item-info img { border-radius: 6px; }
+
+.del-btn {
+    background: #ff453a22;
+    color: #ff453a;
+    border: 1px solid #ff453a;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.del-btn:hover { background: #ff453a; color: #fff; }
