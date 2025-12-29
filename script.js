@@ -1,5 +1,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    query, 
+    where, 
+    orderBy, 
+    updateDoc, 
+    increment, 
+    doc 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Firebase configuration for ursaipa
 const firebaseConfig = {
@@ -58,7 +68,7 @@ function formatDate(timestamp) {
 /**
  * Creates an application card element
  */
-function createAppCard(appData) {
+function createAppCard(appData, docId) {
     const card = document.createElement('div');
     card.className = 'app-card';
     const dateStr = formatDate(appData.upload_date);
@@ -77,7 +87,7 @@ function createAppCard(appData) {
         if (document.getElementById('search-overlay').classList.contains('active')) {
             toggleSearch(false);
         }
-        openModal(appData);
+        openModal(appData, docId);
     });
     return card;
 }
@@ -85,10 +95,10 @@ function createAppCard(appData) {
 /**
  * Renders the main app list
  */
-function renderAppCard(appData) {
+function renderAppCard(appData, docId) {
     const appList = document.getElementById('app-list');
     if (!appList) return;
-    appList.appendChild(createAppCard(appData));
+    appList.appendChild(createAppCard(appData, docId));
 }
 
 /**
@@ -132,11 +142,14 @@ async function renderCategoryBar(sectionName) {
 }
 
 /**
- * Opens modal
+ * Opens modal and INCREMENTS views
  */
-function openModal(appData) {
+async function openModal(appData, docId) {
     const overlay = document.getElementById('modal-overlay');
     const modalBody = document.getElementById('modal-body');
+
+    // Локально увеличиваем число для мгновенного отображения пользователю
+    const displayViews = (appData.views || 0) + 1;
 
     modalBody.innerHTML = `
         <div class="modal-header-info">
@@ -154,7 +167,7 @@ function openModal(appData) {
             <div class="stat-item">VERSION<b>${appData.version}</b></div>
             <div class="stat-item">SIZE<b>${appData.size}</b></div>
             <div class="stat-item">iOS<b>${appData.min_ios}+</b></div>
-            <div class="stat-item">VIEWS<b>${appData.views || 0}</b></div>
+            <div class="stat-item">VIEWS<b id="modal-view-count">${displayViews}</b></div>
             <div class="stat-item" style="grid-column: span 2;">FEATURES<b>${appData.features || "Original"}</b></div>
         </div>
         <div class="modal-desc">${appData.description || "No description available yet."}</div>
@@ -164,6 +177,18 @@ function openModal(appData) {
 
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
+
+    // --- ЛОГИКА СОХРАНЕНИЯ ПРОСМОТРА В FIREBASE ---
+    if (docId) {
+        try {
+            const appDocRef = doc(db, "apps", docId);
+            await updateDoc(appDocRef, {
+                views: increment(1)
+            });
+        } catch (e) {
+            console.error("Error updating views:", e);
+        }
+    }
 }
 
 /**
@@ -211,7 +236,7 @@ async function loadApps(sectionName, category = 'All') {
             return;
         }
 
-        querySnapshot.forEach((doc) => renderAppCard(doc.data()));
+        querySnapshot.forEach((doc) => renderAppCard(doc.data(), doc.id));
     } catch (e) {
         console.error("Firebase Error:", e);
         appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading apps</div>`;
@@ -276,7 +301,7 @@ async function performSearch(term) {
             const data = doc.data();
             if (data.name.toLowerCase().includes(term.toLowerCase())) {
                 found = true;
-                searchResults.appendChild(createAppCard(data));
+                searchResults.appendChild(createAppCard(data, doc.id));
             }
         });
 
@@ -384,7 +409,8 @@ async function checkDeepLink() {
             const snap = await getDocs(q);
             
             if (!snap.empty) {
-                openModal(snap.docs[0].data());
+                const docSnap = snap.docs[0];
+                openModal(docSnap.data(), docSnap.id);
             }
         } catch (e) {
             console.error("Deep Link check failed:", e);
