@@ -6,12 +6,13 @@
     <title>URSA Admin Panel</title>
     <link rel="stylesheet" href="admin.css">
     <style>
-        /* Дополнительное исправление для многострочного текста */
+        /* Исправление для отображения переносов строк и удобства ввода */
         textarea {
             resize: vertical;
-            min-height: 100px;
+            min-height: 150px; /* Увеличено для длинных списков */
             line-height: 1.5;
-            white-space: pre-wrap;
+            white-space: pre-wrap !important; /* Сохраняет переносы при вводе и отображении */
+            font-family: inherit;
         }
     </style>
 </head>
@@ -21,7 +22,7 @@
             <h1>URSA Admin Access</h1>
         </header>
         <div class="admin-section" style="text-align: center;">
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Please sign in with an authorized Google account to manage the database.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Please sign in with an authorized Google account.</p>
             <button id="login-btn">Sign in with Google</button>
             <div style="text-align: center; margin-top: 15px;">
                 <a href="index.html" class="back-link">← Back to Store</a>
@@ -41,8 +42,7 @@
 
         <section class="admin-section">
             <h3 id="form-title">IPA Editor</h3>
-            <form id="add-app-form">
-                <input type="hidden" id="icon_url">
+            <form id="add-app-form" onsubmit="return false;"> <input type="hidden" id="icon_url">
                 <input type="hidden" id="download_url">
 
                 <div class="form-group">
@@ -51,7 +51,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>App Icon (PNG/JPG)</label>
+                    <label>App Icon</label>
                     <div class="upload-box">
                         <input type="file" id="icon-input" accept="image/*" class="file-input">
                         <div class="upload-ui">
@@ -84,7 +84,7 @@
                     </div>
                     <div class="form-group">
                         <label>Category</label>
-                        <input type="text" id="category" required placeholder="Action / Social">
+                        <input type="text" id="category" required placeholder="Action">
                     </div>
                 </div>
 
@@ -111,39 +111,54 @@
                     </div>
                     <div class="form-group">
                         <label>Features</label>
-                        <input type="text" id="features" placeholder="Original / Mod Menu">
+                        <input type="text" id="features" placeholder="Mod Menu / DLC">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="description" rows="5" placeholder="Enter app description, what's new, or mod features here..."></textarea>
+                    <label>Description (Mods List)</label>
+                    <textarea id="description" placeholder="Paste your mod list here...&#10;Anti-Cheat&#10;Item Duplication&#10;..."></textarea>
                 </div>
 
-                <button type="submit" id="submit-btn" disabled>Upload files first...</button>
+                <button type="button" id="manual-submit-btn" class="submit-btn-main" style="width:100%; background:var(--accent); color:white; border:none; padding:18px; border-radius:16px; font-weight:700; font-size:17px; margin-top:10px;">Publish App</button>
             </form>
         </section>
 
         <section class="admin-section">
-            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Inventory</h3>
-                <span class="refresh-hint" style="font-size: 11px; opacity: 0.5;">Live sync enabled</span>
-            </div>
-
-            <div class="search-container" style="margin-bottom: 20px;">
-                <input type="text" id="inventory-search" placeholder="🔍 Search by name or bundle ID..." 
-                    style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; color: white; width: 100%; box-sizing: border-box;">
-            </div>
-
-            <div id="admin-app-list" class="admin-list">
-                </div>
+            <h3>Inventory</h3>
+            <input type="text" id="inventory-search" placeholder="🔍 Search..." style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; padding:12px; color:white; width:100%; box-sizing:border-box; margin-bottom:20px;">
+            <div id="admin-app-list"></div>
         </section>
 
         <footer style="text-align: center; opacity: 0.3; font-size: 10px; padding: 20px 0;">
-            URSA IPA Management System • v2.0 • 2025
+            URSA IPA Management System • 2025
         </footer>
     </div>
 
     <script type="module" src="admin.js"></script>
+
+    <script>
+        // Специальный фикс для iPhone: запрещаем Enter в инпутах отправлять форму, 
+        // а в textarea разрешаем перенос строки
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                if (e.target.tagName === 'INPUT') {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        }, true);
+
+        // Привязываем сохранение к новой кнопке вручную
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('manual-submit-btn');
+            const form = document.getElementById('add-app-form');
+            
+            btn.addEventListener('click', () => {
+                // Инициируем событие submit для admin.js
+                form.dispatchEvent(new Event('submit'));
+            });
+        });
+    </script>
 </body>
 </html>
