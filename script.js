@@ -34,10 +34,24 @@ let currentCategory = 'All';
 /**
  * Push Notifications Logic
  */
-async function requestNotifications() {
+window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
+    
+    // Проверка для iOS: работает ли сайт как PWA (добавлен на рабочий стол)
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+    if (isIOS && !isStandalone) {
+        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' внизу Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с иконки на рабочем столе и попробуйте снова!");
+        return;
+    }
+
     try {
+        if (statusEl) statusEl.textContent = '...';
+        
+        // Запрос прав у браузера
         const permission = await Notification.requestPermission();
+        
         if (permission === 'granted') {
             const token = await getToken(messaging, { 
                 vapidKey: 'BMAUf9qk8ZkeepGWcHaffFfutJ7rAvavjGF4dvhWYZ3aUuswVAfiF2h6Pc6ZNZqT0UlkxXYT0pmJZis2LNIJBvc' 
@@ -51,23 +65,23 @@ async function requestNotifications() {
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
-                alert("✅ Notifications enabled! You will be notified about new IPA updates.");
+                alert("✅ Уведомления успешно включены!");
             }
         } else {
-            alert("❌ Permission denied. Please enable notifications in your browser settings.");
+            if (statusEl) statusEl.textContent = 'OFF';
+            alert("❌ Доступ запрещен. Включите уведомления в настройках вашего браузера.");
         }
     } catch (error) {
         console.error("Notification Error:", error);
+        alert("Ваш браузер или режим не поддерживает уведомления.");
     }
-}
+};
 
-// Listen for foreground messages
+// Прослушивание сообщений, когда сайт открыт
 onMessage(messaging, (payload) => {
     console.log('Message received. ', payload);
     alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
 });
-
-window.activateNotifications = requestNotifications;
 
 /**
  * Helper: Share functionality (Deep Linking)
@@ -401,7 +415,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
                             </div>
                             <span class="arrow">›</span>
                         </div>
-                        <div class="more-item-link notify-btn" onclick="activateNotifications()">
+                        <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
                             <div class="more-item-content">
                                 <span class="item-icon">🔔</span>
                                 <span>IPA Notifications</span>
