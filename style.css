@@ -437,6 +437,9 @@ body::after {
     color: white; 
     text-transform: none;
     font-weight: 700;
+    /* КРИТИЧЕСКИ ВАЖНО: сохранение переносов для FEATURES */
+    white-space: pre-wrap !important;
+    word-break: break-word;
 }
 
 .modal-desc {
@@ -444,7 +447,9 @@ body::after {
     opacity: 0.85;
     line-height: 1.6;
     margin-bottom: 30px;
-    white-space: pre-wrap;
+    /* КРИТИЧЕСКИ ВАЖНО: сохранение переносов для Description */
+    white-space: pre-wrap !important;
+    word-break: break-word;
 }
 
 .get-btn-big {
