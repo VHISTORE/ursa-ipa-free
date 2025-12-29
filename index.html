@@ -72,7 +72,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Путь ./ и scope ./ критически важны для работы в подпапках GitHub Pages
+                // Путь ./ и scope ./ обязательны для корректной работы в подпапках (vhistore.github.io/ursa-ipa-free/)
                 navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './' })
                     .then((registration) => {
                         console.log('Service Worker успешно зарегистрирован. Scope:', registration.scope);
