@@ -76,7 +76,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- DIRECT LINK PARSER ---
+// --- UNIVERSAL DIRECT LINK PARSER (The "Clear" logic) ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -89,7 +89,24 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         });
         
         const result = await response.json();
-        if (result.status === "ok" && result.data && result.data.link) return result.data.link;
+        if (result.status === "ok" && result.data) {
+            const data = result.data;
+            if (data.link) return data.link;
+            // Search deeply if structure changes
+            const deepSearch = (obj) => {
+                for (let key in obj) {
+                    if (typeof obj[key] === 'string' && obj[key].startsWith('http')) return obj[key];
+                    if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        const found = deepSearch(obj[key]);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+            const foundUrl = deepSearch(data);
+            if (foundUrl) return foundUrl;
+        }
+        // If not ready, retry (Gofile needs a moment after upload)
         if (retryCount < 5) {
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
@@ -98,7 +115,7 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
     } catch (e) { return null; }
 }
 
-// --- FILE UPLOAD ---
+// --- FILE UPLOAD LOGIC ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -131,6 +148,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
                 if (res.status === "ok") {
                     status.textContent = "🔗 Fetching Direct Link...";
                     const fileId = res.data.id;
+                    // Wait 2 seconds for Gofile to index the file
                     await new Promise(r => setTimeout(r, 2000));
                     const directUrl = await createAndGetDirectLink(fileId);
                     const finalUrl = directUrl || res.data.downloadPage;
@@ -218,15 +236,6 @@ function renderList(apps) {
     });
 }
 
-searchInput.addEventListener('input', (e) => {
-    const val = e.target.value.toLowerCase().trim();
-    const filtered = allApps.filter(app => 
-        app.name.toLowerCase().includes(val) || 
-        (app.bundle_id && app.bundle_id.toLowerCase().includes(val))
-    );
-    renderList(filtered);
-});
-
 function startEdit(id, appData) {
     currentEditId = id;
     editMode = true;
@@ -239,14 +248,11 @@ function startEdit(id, appData) {
     });
     document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
     
-    // ФИКС СКРОЛЛА: Плавный скролл к форме при нажатии Edit
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
     submitBtn.style.background = "#30d158";
     updateSubmitButton();
 }
 
-// ОСНОВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ
 const handleSave = async () => {
     if (submitBtn.disabled) return;
     submitBtn.disabled = true;
@@ -263,7 +269,7 @@ const handleSave = async () => {
         download_url: document.getElementById('download_url').value, 
         min_ios: document.getElementById('min_ios').value,
         features: document.getElementById('features').value || "Original",
-        description: document.getElementById('description').value || "Product by URSA",
+        description: document.getElementById('description').value,
         upload_date: serverTimestamp()
     };
 
@@ -281,9 +287,13 @@ const handleSave = async () => {
     updateSubmitButton();
 };
 
-// Привязываем сохранение и к событию submit (ПК) и к клику по кнопке (iPhone)
+// Listen for both Form Submit (PC) and Button Click (iPhone fix)
 form.addEventListener('submit', (e) => { e.preventDefault(); handleSave(); });
-if (submitBtn) { submitBtn.onclick = () => { if(!submitBtn.disabled) handleSave(); } };
+if (document.getElementById('manual-submit-btn')) {
+    document.getElementById('manual-submit-btn').onclick = handleSave;
+} else if (submitBtn) {
+    submitBtn.onclick = handleSave;
+}
 
 function resetForm() {
     form.reset();
@@ -294,11 +304,13 @@ function resetForm() {
     submitBtn.style.background = "#007aff";
     document.getElementById('icon-progress').style.width = "0%";
     document.getElementById('ipa-progress').style.width = "0%";
+    document.getElementById('icon-status').textContent = "Upload Icon";
+    document.getElementById('ipa-status').textContent = "Upload IPA";
     document.getElementById('icon-preview').innerHTML = "📸";
     updateSubmitButton();
 }
 
-// ФИКС ENTER: Разрешаем перенос строк в TEXTAREA и блокируем авто-сабмит в INPUT
+// FIX ENTER KEY
 form.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         if (e.target.tagName === 'TEXTAREA') {
@@ -308,4 +320,13 @@ form.addEventListener('keydown', function(e) {
             return false;
         }
     }
+});
+
+searchInput.addEventListener('input', (e) => {
+    const val = e.target.value.toLowerCase().trim();
+    const filtered = allApps.filter(app => 
+        app.name.toLowerCase().includes(val) || 
+        (app.bundle_id && app.bundle_id.toLowerCase().includes(val))
+    );
+    renderList(filtered);
 });
