@@ -7,115 +7,72 @@
     <link rel="stylesheet" href="admin.css">
 </head>
 <body>
-
     <div id="auth-container" class="admin-container">
-        <header>
-            <h1>URSA Admin Access</h1>
-        </header>
-        <div class="auth-box">
-            <p>Please sign in with your Google account to manage the database.</p>
-            <button id="login-btn">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
-                Sign in with Google
-            </button>
-            <div class="auth-footer">
-                <a href="index.html" class="back-link">← Back to Site</a>
-            </div>
+        <header><h1>URSA Admin Access</h1></header>
+        <div class="admin-section" style="text-align: center;">
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Sign in to manage apps.</p>
+            <button id="login-btn">Sign in with Google</button>
+            <div style="margin-top: 20px;"><a href="index.html" class="back-link">← Back to Site</a></div>
         </div>
     </div>
 
     <div id="admin-main" class="admin-container" style="display: none;">
         <header>
             <div class="header-top">
-                <span id="admin-email" class="admin-badge"></span>
+                <span id="admin-email" style="color: #30d158; font-weight: bold; font-size: 13px;"></span>
                 <button id="logout-btn" class="logout-btn">Logout</button>
             </div>
-            <h1>Admin Panel</h1>
+            <h1>Dashboard</h1>
             <a href="index.html" class="back-link">← Back to Site</a>
         </header>
 
         <section class="admin-section">
-            <h3>Add New Entry</h3>
+            <h3 id="form-title">Editor</h3>
             <form id="add-app-form">
                 <div class="form-group">
                     <label>App Name</label>
-                    <input type="text" id="name" placeholder="Minecraft" required>
+                    <input type="text" id="name" required placeholder="Name">
                 </div>
-
                 <div class="form-row">
                     <div class="form-group">
                         <label>Section</label>
                         <select id="section" required>
-                            <option value="games">🕹 Games</option>
-                            <option value="apps">📱 Apps</option>
+                            <option value="games">Games</option>
+                            <option value="apps">Apps</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Category</label>
-                        <input type="text" id="category" placeholder="Action" required>
+                        <input type="text" id="category" required placeholder="Action">
                     </div>
                 </div>
-
                 <div class="form-row">
                     <div class="form-group">
                         <label>Version</label>
-                        <input type="text" id="version" placeholder="1.21.0" required>
+                        <input type="text" id="version" required placeholder="1.0">
                     </div>
                     <div class="form-group">
                         <label>Size</label>
-                        <input type="text" id="size" placeholder="250 MB" required>
+                        <input type="text" id="size" required placeholder="100 MB">
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label>Bundle ID</label>
-                    <input type="text" id="bundle_id" placeholder="com.mojang.minecraftpe" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Icon URL</label>
-                    <input type="url" id="icon_url" placeholder="https://image-link.png" required>
-                </div>
-
-                <div class="form-group">
-                    <label>IPA Download URL</label>
-                    <input type="url" id="download_url" placeholder="https://ipa-link.ipa" required>
-                </div>
-
+                <div class="form-group"><label>Bundle ID</label><input type="text" id="bundle_id" required></div>
+                <div class="form-group"><label>Icon URL</label><input type="url" id="icon_url" required></div>
+                <div class="form-group"><label>IPA URL</label><input type="url" id="download_url" required></div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Min iOS</label>
-                        <input type="text" id="min_ios" placeholder="15.0" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Features</label>
-                        <input type="text" id="features" placeholder="Mod Menu / Unlimited Money">
-                    </div>
+                    <div class="form-group"><label>Min iOS</label><input type="text" id="min_ios" required></div>
+                    <div class="form-group"><label>Features</label><input type="text" id="features"></div>
                 </div>
-
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="description" rows="3" placeholder="Enter app details..."></textarea>
-                </div>
-
-                <button type="submit" id="submit-btn">Publish to Database</button>
+                <div class="form-group"><label>Description</label><textarea id="description" rows="3"></textarea></div>
+                <button type="submit" id="submit-btn">Publish App</button>
             </form>
         </section>
 
         <section class="admin-section">
-            <div class="section-header">
-                <h3>Live Inventory</h3>
-                <span class="refresh-hint">Auto-updates on change</span>
-            </div>
-            <div id="admin-app-list" class="admin-list">
-                </div>
+            <h3>Inventory</h3>
+            <div id="admin-app-list" class="admin-list"></div>
         </section>
-
-        <footer class="admin-footer">
-            URSA IPA Management System • 2025
-        </footer>
     </div>
-
     <script type="module" src="admin.js"></script>
 </body>
 </html>
