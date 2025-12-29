@@ -7,6 +7,7 @@
     
     <link rel="manifest" href="./manifest.json">
     
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="URSA IPA">
@@ -71,10 +72,10 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Путь ./ важен для корректной работы в подпапках GitHub
+                // Путь ./ и scope ./ критически важны для работы в подпапках GitHub Pages
                 navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './' })
                     .then((registration) => {
-                        console.log('Service Worker успешно зарегистрирован:', registration.scope);
+                        console.log('Service Worker успешно зарегистрирован. Scope:', registration.scope);
                     })
                     .catch((err) => {
                         console.error('Ошибка регистрации Service Worker:', err);
