@@ -275,7 +275,7 @@ body::after {
     overflow: hidden;
     text-overflow: ellipsis;
     margin-bottom: 3px;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .app-meta { 
@@ -367,34 +367,56 @@ body::after {
     box-shadow: 0 10px 24px rgba(0,0,0,0.4);
 }
 
-.modal-title-wrap { flex: 1; min-width: 0; }
-.modal-title-wrap h2 { font-size: 24px; margin-bottom: 4px; font-weight: 800; }
-.modal-title-wrap p { opacity: 0.5; font-size: 14px; }
+.modal-title-wrap { 
+    flex: 1; 
+    min-width: 0; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+}
 
-/* --- PNG SHARE BUTTON STYLE --- */
-.share-btn-top {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
+.modal-title-wrap h2 { 
+    font-size: 22px; 
+    font-weight: 800; 
+    line-height: 1.2; 
+}
+
+/* RECTANGULAR SHARE BUTTON */
+.share-btn-rect {
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-    margin-left: 10px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    width: fit-content;
+    transition: background 0.2s, transform 0.1s;
 }
 
-.share-btn-top img {
-    width: 20px; 
-    height: 20px;
-    filter: invert(1); /* Makes the PNG white to match your theme */
+.share-btn-rect img { 
+    width: 14px; 
+    height: 14px; 
+    filter: invert(1); 
 }
 
-.share-btn-top:active {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(0.9);
+.share-btn-rect span { 
+    font-size: 11px; 
+    font-weight: 800; 
+    letter-spacing: 0.5px; 
+}
+
+.share-btn-rect:active { 
+    background: rgba(255, 255, 255, 0.2); 
+    transform: scale(0.95); 
+}
+
+.bundle-id-text { 
+    opacity: 0.4; 
+    font-size: 12px; 
+    font-family: monospace; 
 }
 
 .modal-stats {
