@@ -1,10 +1,9 @@
 :root {
-    --header-bg: rgba(0, 0, 0, 0.7); /* Чуть прозрачнее для контраста с ярким фоном */
+    --header-bg: rgba(0, 0, 0, 0.7);
     --text-color: #ffffff;
     --badge-color: #30d158;
 }
 
-/* Базовые стили */
 * {
     margin: 0;
     padding: 0;
@@ -13,40 +12,46 @@
 }
 
 body {
-    /* Более яркая и светлая палитра синего и голубого */
-    background: linear-gradient(
-        45deg, 
-        #007aff, 
-        #00d2ff, 
-        #3a7bd5, 
-        #00c6ff, 
-        #007aff
-    );
-    background-size: 300% 300%; /* Уменьшили размер для более частой смены цветов */
-    animation: activeGradient 8s ease-in-out infinite; /* Ускорили анимацию с 15с до 8с */
+    margin: 0;
+    width: 100%;
+    height: 100vh;
     color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    height: 100vh;
-    overflow-x: hidden;
+    background-color: #007aff; /* Базовый цвет */
+    overflow: hidden;
     position: relative;
 }
 
-/* Добавляем эффект "шума" поверх для стиля */
+/* Создаем отдельный слой для плавной круговой анимации */
+body::before {
+    content: "";
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    /* Используем несколько градиентов для глубины */
+    background: radial-gradient(circle at center, #00d2ff 0%, #3a7bd5 30%, #007aff 60%, #00c6ff 100%);
+    background-size: cover;
+    /* Анимация вращения — самая плавная для глаза */
+    animation: rotateGradient 15s linear infinite;
+    z-index: -1;
+}
+
+/* Слой шума для текстуры */
 body::after {
     content: "";
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-    opacity: 0.15;
+    opacity: 0.12;
     pointer-events: none;
     z-index: 0;
 }
 
-/* Ускоренная и более амплитудная анимация */
-@keyframes activeGradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+@keyframes rotateGradient {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 /* Шапка сайта */
@@ -57,15 +62,10 @@ body::after {
     width: 100%;
     padding: 22px;
     background: var(--header-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 0.5px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
     text-align: center;
-}
-
-.header-content {
-    display: inline-block;
-    position: relative;
 }
 
 .main-header h1 {
@@ -73,7 +73,9 @@ body::after {
     font-weight: 800;
     letter-spacing: 1px;
     margin: 0;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    background: linear-gradient(to bottom, #fff, #e0e0e0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .badge {
@@ -86,12 +88,10 @@ body::after {
     margin-left: 8px;
     vertical-align: middle;
     background: rgba(48, 209, 88, 0.1);
-    box-shadow: 0 0 8px rgba(48, 209, 88, 0.3);
 }
 
 #content {
     position: relative;
     z-index: 1;
     padding: 20px;
-    min-height: calc(100vh - 80px);
 }
