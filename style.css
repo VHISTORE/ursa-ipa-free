@@ -1,61 +1,122 @@
-/* Базовые настройки */
+:root {
+    --bg-color: #000000;
+    --accent-color: #30d158; /* Зеленый для Free */
+    --nav-active: #0a84ff;   /* Синий iOS */
+    --text-main: #ffffff;
+    --text-secondary: #8e8e93;
+    --glass-bg: rgba(28, 28, 30, 0.85);
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent; /* Убираем синий квадрат при клике на iOS */
 }
 
 body {
-    background: radial-gradient(circle at top, #1c1c1e, #000000);
-    color: white;
-    height: 100vh;
-    overflow: hidden;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.4;
+    overflow-x: hidden;
 }
 
-/* Контейнер для контента */
+/* ШАПКА */
+.main-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 15px 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+}
+
+.logo-area h1 {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.badge {
+    font-size: 10px;
+    font-weight: 900;
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    padding: 1px 5px;
+    border-radius: 5px;
+    margin-left: 8px;
+    margin-top: -2px;
+}
+
+/* КОНТЕНТ */
 #content {
     padding: 20px;
-    height: calc(100vh - 70px); /* Вычитаем высоту навигации */
-    overflow-y: auto;
+    padding-bottom: 120px; /* Чтобы контент не перекрывался навигацией */
 }
 
-/* Нижняя панель */
+/* НАВИГАЦИЯ (Floating Island Style) */
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    width: 100%;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 450px;
     height: 70px;
-    background: rgba(28, 28, 30, 0.95);
-    backdrop-filter: blur(10px); /* Эффект размытия */
+    background: var(--glass-bg);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-radius: 25px;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    border-top: 0.5px solid #38383a;
-    padding-bottom: env(safe-area-inset-bottom); /* Поддержка челок iPhone */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    z-index: 1000;
 }
 
 .nav-item {
     background: none;
     border: none;
-    color: #8e8e93;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 5px;
     cursor: pointer;
-    transition: 0.3s;
+    transition: transform 0.2s ease;
 }
 
-.nav-item.active {
-    color: #0a84ff; /* Синий цвет активной кнопки */
-}
-
-.icon {
-    font-size: 24px;
-    margin-bottom: 4px;
+.icon-wrapper {
+    font-size: 22px;
+    transition: all 0.2s ease;
 }
 
 .label {
-    font-size: 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
     font-weight: 500;
+}
+
+/* Активное состояние */
+.nav-item.active .label {
+    color: var(--nav-active);
+}
+
+.nav-item.active .icon-wrapper {
+    transform: translateY(-3px);
+    filter: drop-shadow(0 0 5px rgba(10, 132, 255, 0.5));
+}
+
+/* Эффект нажатия */
+.nav-item:active {
+    transform: scale(0.9);
 }
