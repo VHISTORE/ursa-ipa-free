@@ -32,17 +32,23 @@ let currentSection = 'games';
 let currentCategory = 'All';
 
 /**
- * Push Notifications Logic (iOS PWA Compatible)
+ * Push Notifications Logic (iOS & Android Compatible)
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
     
+    // Проверка поддержки API уведомлений в браузере
+    if (!('Notification' in window)) {
+        alert("Уведомления не поддерживаются этим браузером.");
+        return;
+    }
+
     // Проверка для iOS: работает ли сайт как PWA (добавлен на рабочий стол)
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
     if (isIOS && !isStandalone) {
-        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' в Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с иконки на рабочем столе!");
+        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' в Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с иконки на рабочем столе и попробуйте снова!");
         return;
     }
 
@@ -65,16 +71,16 @@ window.activateNotifications = async function() {
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
-                alert("✅ Notifications enabled successfully!");
+                alert("✅ Уведомления успешно включены! Вы будете получать сообщения об обновлениях IPA.");
             }
         } else {
             if (statusEl) statusEl.textContent = 'OFF';
-            alert("❌ Permission denied. Please check your browser notification settings.");
+            alert("❌ Доступ запрещен. Включите уведомления в настройках вашего браузера/iOS.");
         }
     } catch (error) {
         console.error("Notification Error:", error);
         if (statusEl) statusEl.textContent = 'OFF';
-        alert("Notification system is unavailable on this device/browser.");
+        alert("Система уведомлений временно недоступна.");
     }
 };
 
@@ -103,7 +109,7 @@ window.shareApp = (bundleId) => {
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
-        alert('Link copied to clipboard!');
+        alert('Ссылка скопирована!');
     }
 };
 
