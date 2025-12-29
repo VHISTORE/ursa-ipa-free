@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Конфигурация проекта ursaipa
+// Firebase configuration for ursaipa
 const firebaseConfig = {
   apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
   authDomain: "ursaipa.firebaseapp.com",
@@ -12,29 +12,28 @@ const firebaseConfig = {
   measurementId: "G-RWFQ47DLHS"
 };
 
-// Инициализация
+// Initialize
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Глобальное состояние для фильтрации
 let currentSection = 'games';
 let currentCategory = 'All';
 
 /**
- * Преобразует Firebase Timestamp в строку даты (ДД.ММ.ГГГГ)
+ * Converts Firebase Timestamp to an English date string (ShortMonth DD, YYYY)
  */
 function formatDate(timestamp) {
-    if (!timestamp) return "Неизвестно";
+    if (!timestamp) return "Unknown";
     const date = timestamp.toDate();
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString('en-US', {
         day: '2-digit',
-        month: '2-digit',
+        month: 'short',
         year: 'numeric'
     });
 }
 
 /**
- * Отрисовка карточки приложения
+ * Renders an application card in the list
  */
 function renderAppCard(appData) {
     const appList = document.getElementById('app-list');
@@ -49,7 +48,7 @@ function renderAppCard(appData) {
         <div class="app-info">
             <div class="app-name">${appData.name || 'Unknown'}</div>
             <div class="app-meta">v${appData.version || '0'} • ${appData.size || '?? MB'}</div>
-            <div class="app-date">Обновлено: ${dateStr}</div>
+            <div class="app-date">Updated: ${dateStr}</div>
         </div>
         <button class="download-btn">GET</button>
     `;
@@ -59,18 +58,16 @@ function renderAppCard(appData) {
 }
 
 /**
- * Управление категориями (динамическое создание кнопок)
+ * Generates category buttons based on available data in Firestore
  */
 async function renderCategoryBar(sectionName) {
     const bar = document.getElementById('category-bar');
     if (!bar) return;
     bar.innerHTML = '';
     
-    // Всегда начинаем с кнопки "All"
     const categories = ['All'];
     
     try {
-        // Получаем все документы секции, чтобы вытащить уникальные категории
         const q = query(collection(db, "apps"), where("section", "==", sectionName));
         const snap = await getDocs(q);
         
@@ -84,9 +81,10 @@ async function renderCategoryBar(sectionName) {
         categories.forEach(cat => {
             const btn = document.createElement('button');
             btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
-            btn.textContent = cat === 'All' ? 'Все' : cat.charAt(0).toUpperCase() + cat.slice(1);
+            btn.textContent = cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
             
-            btn.onclick = () => {
+            btn.onclick = (e) => {
+                e.stopPropagation(); // Prevents modal from opening
                 currentCategory = cat;
                 document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -95,55 +93,12 @@ async function renderCategoryBar(sectionName) {
             bar.appendChild(btn);
         });
     } catch (e) {
-        console.error("Ошибка категорий:", e);
+        console.error("Category Error:", e);
     }
 }
 
 /**
- * Загрузка данных из Firebase с учетом фильтров
- */
-async function loadApps(sectionName, category = 'All') {
-    const appList = document.getElementById('app-list');
-    if (!appList) return;
-    
-    appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5; font-size:14px;">Загрузка...</div>';
-
-    try {
-        const colRef = collection(db, "apps");
-        let q;
-        
-        // Формируем запрос в зависимости от выбранной категории
-        if (category === 'All') {
-            q = query(colRef, where("section", "==", sectionName), orderBy("upload_date", "desc"));
-        } else {
-            q = query(colRef, 
-                where("section", "==", sectionName), 
-                where("category", "==", category), 
-                orderBy("upload_date", "desc")
-            );
-        }
-        
-        const querySnapshot = await getDocs(q);
-        appList.innerHTML = ''; 
-
-        if (querySnapshot.empty) {
-            appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">Ничего не найдено</div>';
-            return;
-        }
-
-        querySnapshot.forEach((doc) => renderAppCard(doc.data()));
-    } catch (e) {
-        console.error("Firebase Error:", e);
-        if (e.code === 'failed-precondition') {
-            appList.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fff;">Нужен индекс для фильтрации. Ссылка в F12</div>';
-        } else {
-            appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Ошибка: ${e.code}</div>`;
-        }
-    }
-}
-
-/**
- * Модальное окно
+ * Opens modal with full details
  */
 function openModal(appData) {
     const overlay = document.getElementById('modal-overlay');
@@ -158,13 +113,13 @@ function openModal(appData) {
             </div>
         </div>
         <div class="modal-stats">
-            <div class="stat-item">ВЕРСИЯ<b>${appData.version}</b></div>
-            <div class="stat-item">РАЗМЕР<b>${appData.size}</b></div>
+            <div class="stat-item">VERSION<b>${appData.version}</b></div>
+            <div class="stat-item">SIZE<b>${appData.size}</b></div>
             <div class="stat-item">iOS<b>${appData.min_ios}+</b></div>
-            <div class="stat-item">ПРОСМОТРЫ<b>${appData.views || 0}</b></div>
-            <div class="stat-item" style="grid-column: span 2;">ФИШКИ<b>${appData.features || "Original"}</b></div>
+            <div class="stat-item">VIEWS<b>${appData.views || 0}</b></div>
+            <div class="stat-item" style="grid-column: span 2;">FEATURES<b>${appData.features || "Original"}</b></div>
         </div>
-        <div class="modal-desc">${appData.description || "Описание функционала скоро появится."}</div>
+        <div class="modal-desc">${appData.description || "Description coming soon."}</div>
         <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
     `;
     overlay.classList.add('active');
@@ -177,7 +132,49 @@ document.getElementById('modal-overlay').addEventListener('click', (e) => {
 });
 
 /**
- * Навигация (Нижнее меню)
+ * Fetches apps from Firebase with section and category filtering
+ */
+async function loadApps(sectionName, category = 'All') {
+    const appList = document.getElementById('app-list');
+    if (!appList) return;
+    
+    appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5; font-size:14px;">Loading...</div>';
+
+    try {
+        const colRef = collection(db, "apps");
+        let q;
+        
+        if (category === 'All') {
+            q = query(colRef, where("section", "==", sectionName), orderBy("upload_date", "desc"));
+        } else {
+            q = query(colRef, 
+                where("section", "==", sectionName), 
+                where("category", "==", category), 
+                orderBy("upload_date", "desc")
+            );
+        }
+        
+        const querySnapshot = await getDocs(q);
+        appList.innerHTML = ''; 
+
+        if (querySnapshot.empty) {
+            appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">No items found</div>';
+            return;
+        }
+
+        querySnapshot.forEach((doc) => renderAppCard(doc.data()));
+    } catch (e) {
+        console.error("Firebase Error:", e);
+        if (e.code === 'failed-precondition') {
+            appList.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fff;">Index required. Check browser console (F12) for link.</div>';
+        } else {
+            appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error: ${e.code}</div>`;
+        }
+    }
+}
+
+/**
+ * Bottom Navigation logic
  */
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
@@ -185,27 +182,25 @@ document.querySelectorAll('.nav-item').forEach(button => {
         if (contentArea) contentArea.scrollTo({ top: 0, behavior: 'smooth' });
 
         const target = button.getAttribute('data-target');
-        
-        // Визуальное переключение кнопок
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         
         if (target === 'games' || target === 'apps') {
             currentSection = target;
-            currentCategory = 'All'; // Сброс фильтра при смене раздела
+            currentCategory = 'All';
             renderCategoryBar(target);
             loadApps(target);
         } else {
-            document.getElementById('category-bar').innerHTML = ''; // Скрываем категории в поиске/настройках
+            document.getElementById('category-bar').innerHTML = '';
             document.getElementById('app-list').innerHTML = `
-                <div style="text-align:center; padding:50px; opacity:0.5;">Раздел ${target.toUpperCase()} в разработке</div>
+                <div style="text-align:center; padding:50px; opacity:0.5;">${target.toUpperCase()} section coming soon</div>
             `;
         }
     });
 });
 
 /**
- * Старт приложения
+ * Application entry point
  */
 window.addEventListener('DOMContentLoaded', () => {
     renderCategoryBar('games');
