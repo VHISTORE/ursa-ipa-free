@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Твой точный конфиг проекта ursaipa
+// Конфигурация проекта ursaipa
 const firebaseConfig = {
   apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
   authDomain: "ursaipa.firebaseapp.com",
@@ -12,12 +12,25 @@ const firebaseConfig = {
   measurementId: "G-RWFQ47DLHS"
 };
 
-// Инициализация Firebase
+// Инициализация
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /**
- * Отрисовка карточки приложения
+ * Преобразует Firebase Timestamp в строку даты (ДД.ММ.ГГГГ)
+ */
+function formatDate(timestamp) {
+    if (!timestamp) return "Неизвестно";
+    const date = timestamp.toDate();
+    return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+/**
+ * Отрисовка карточки приложения в общем списке
  */
 function renderAppCard(appData) {
     const appList = document.getElementById('app-list');
@@ -26,28 +39,69 @@ function renderAppCard(appData) {
     const card = document.createElement('div');
     card.className = 'app-card';
     
-    // Безопасное извлечение данных
-    const name = appData.name || 'Unknown App';
-    const version = appData.version || '0.0';
-    const size = appData.size || '?? MB';
-    const features = appData.features || '';
-    const icon = appData.icon_url || 'https://via.placeholder.com/60';
-    const dl = appData.download_url || '#';
+    // Вместо features теперь отображаем дату загрузки
+    const dateStr = formatDate(appData.upload_date);
 
     card.innerHTML = `
-        <img src="${icon}" class="app-icon" onerror="this.src='https://via.placeholder.com/60'">
+        <img src="${appData.icon_url}" class="app-icon" onerror="this.src='https://via.placeholder.com/60'">
         <div class="app-info">
-            <div class="app-name">${name}</div>
-            <div class="app-meta">v${version} • ${size}</div>
-            <div class="app-features">${features}</div>
+            <div class="app-name">${appData.name || 'Unknown'}</div>
+            <div class="app-meta">v${appData.version || '0'} • ${appData.size || '?? MB'}</div>
+            <div class="app-date">Обновлено: ${dateStr}</div>
         </div>
-        <button class="download-btn" onclick="window.location.href='${dl}'">GET</button>
+        <button class="download-btn">GET</button>
     `;
+
+    // При нажатии на любую часть карточки открываем модалку
+    card.addEventListener('click', () => openModal(appData));
+    
     appList.appendChild(card);
 }
 
 /**
- * Загрузка данных из корневой коллекции "apps"
+ * Открытие модального окна с полной информацией
+ */
+function openModal(appData) {
+    const overlay = document.getElementById('modal-overlay');
+    const modalBody = document.getElementById('modal-body');
+
+    modalBody.innerHTML = `
+        <div class="modal-header-info">
+            <img src="${appData.icon_url}" class="modal-icon-big" onerror="this.src='https://via.placeholder.com/60'">
+            <div class="modal-title-wrap">
+                <h2>${appData.name}</h2>
+                <p>${appData.bundle_id}</p>
+            </div>
+        </div>
+        <div class="modal-stats">
+            <div class="stat-item">ВЕРСИЯ<b>${appData.version}</b></div>
+            <div class="stat-item">РАЗМЕР<b>${appData.size}</b></div>
+            <div class="stat-item">iOS<b>${appData.min_ios}+</b></div>
+            <div class="stat-item">ПРОСМОТРЫ<b>${appData.views || 0}</b></div>
+            <div class="stat-item" style="grid-column: span 2;">ФИШКИ<b>${appData.features || "Original"}</b></div>
+        </div>
+        <div class="modal-desc">${appData.description || "Описание функционала скоро появится."}</div>
+        <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
+    `;
+
+    overlay.classList.add('active');
+}
+
+/**
+ * Закрытие модального окна
+ */
+const closeModal = () => {
+    document.getElementById('modal-overlay').classList.remove('active');
+};
+
+// Назначаем слушатели для закрытия
+document.getElementById('close-modal').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-overlay') closeModal();
+});
+
+/**
+ * Загрузка данных из Firebase
  */
 async function loadApps(sectionName) {
     const appList = document.getElementById('app-list');
@@ -56,9 +110,7 @@ async function loadApps(sectionName) {
     appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5; font-size:14px;">Загрузка...</div>';
 
     try {
-        // Теперь используем прямой путь к коллекции, которую ты создал последней
         const colRef = collection(db, "apps");
-        
         const q = query(
             colRef, 
             where("section", "==", sectionName),
@@ -78,8 +130,6 @@ async function loadApps(sectionName) {
         });
     } catch (e) {
         console.error("Firebase Error:", e);
-        
-        // Обработка ошибок доступа или отсутствия индекса
         if (e.code === 'failed-precondition') {
             appList.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fff;">Нужно подтвердить индекс. Ссылка в консоли браузера (F12)</div>';
         } else {
@@ -89,15 +139,13 @@ async function loadApps(sectionName) {
 }
 
 /**
- * Логика переключения вкладок навигации
+ * Навигация
  */
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
-        // Скроллим контент вверх при переключении
         const contentArea = document.getElementById('content');
         if (contentArea) contentArea.scrollTo({ top: 0, behavior: 'smooth' });
 
-        // Обновляем визуальное состояние кнопок
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         
@@ -118,9 +166,8 @@ document.querySelectorAll('.nav-item').forEach(button => {
 });
 
 /**
- * Стартовая инициализация
+ * Старт
  */
 window.addEventListener('DOMContentLoaded', () => {
-    // Загружаем игры сразу после загрузки страницы
     loadApps('games');
 });
