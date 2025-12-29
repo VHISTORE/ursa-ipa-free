@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
     authDomain: "ursaipa.firebaseapp.com",
@@ -17,10 +16,9 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Данные Gofile и Admin
 const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35"; 
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
-const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; // Ваш Root ID
+const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; 
 
 let editMode = false;
 let currentEditId = null;
@@ -33,7 +31,6 @@ const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
 
-// --- УПРАВЛЕНИЕ ДОСТУПОМ ---
 onAuthStateChanged(auth, (user) => {
     if (user && user.email === ADMIN_EMAIL) {
         authContainer.style.display = 'none';
@@ -61,7 +58,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- ИСПРАВЛЕННОЕ ПОЛУЧЕНИЕ DIRECT LINK ---
+// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР ССЫЛОК ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -74,37 +71,39 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         });
         
         const result = await response.json();
-        console.log(`DirectLink Attempt ${retryCount + 1}:`, result);
+        console.log(`DirectLink Attempt ${retryCount + 1} for ${contentId}:`, result);
 
         if (result.status === "ok" && result.data && result.data.directLinks) {
             const dl = result.data.directLinks;
             
-            // Если Gofile вернул массив
+            // Если Gofile вернул массив (старая версия)
             if (Array.isArray(dl) && dl.length > 0) {
                 return dl[0].link || dl[0].directLink;
             } 
             
-            // Если Gofile вернул ОБЪЕКТ (ваш случай на скриншотах)
+            // Если Gofile вернул ОБЪЕКТ (ваша версия - Май 2025)
+            // Берем первую попавшуюся ссылку внутри объекта
             const linkKeys = Object.keys(dl);
             if (linkKeys.length > 0) {
                 const firstKey = linkKeys[0];
-                return dl[firstKey].link || dl[firstKey].directLink;
+                const finalUrl = dl[firstKey].link || dl[firstKey].directLink;
+                console.log("SUCCESS! Found Link:", finalUrl);
+                return finalUrl;
             }
         }
 
         if (retryCount < 5) {
-            console.log("DirectLink not ready, retrying in 3s...");
+            console.log("Link not found in response, retrying in 3s...");
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
         }
         return null;
     } catch (e) {
-        console.error("DirectLink API Error:", e);
+        console.error("Critical Error in createAndGetDirectLink:", e);
         return null;
     }
 }
 
-// --- УНИВЕРСАЛЬНАЯ ЗАГРУЗКА В ROOT ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -112,7 +111,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
 
     try {
         status.style.color = "white";
-        status.textContent = "🚀 Uploading to Root...";
+        status.textContent = "🚀 Starting upload...";
         
         const formData = new FormData();
         formData.append('file', file);
@@ -132,10 +131,11 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔗 Creating Direct Link...";
+                    status.textContent = "🔗 Fetching Direct Link...";
                     const fileId = res.data.id;
                     
-                    await new Promise(r => setTimeout(r, 1500));
+                    // Пауза перед запросом ссылки (индексация)
+                    await new Promise(r => setTimeout(r, 2000));
 
                     const directUrl = await createAndGetDirectLink(fileId);
                     const finalUrl = directUrl || res.data.downloadPage;
@@ -156,7 +156,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
                     status.textContent = "❌ Upload Error: " + res.status;
                 }
             } catch (e) {
-                status.textContent = "❌ Error processing response";
+                status.textContent = "❌ Processing Error";
             }
         };
         xhr.send(formData);
@@ -164,6 +164,9 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         status.textContent = "❌ Connection failed";
     }
 }
+
+// ... ОСТАЛЬНАЯ ЧАСТЬ КОДА (loadInventory, startEdit, form listener) ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ...
+// Но для целостности продублирую слушатели и сброс:
 
 document.getElementById('icon-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'icon-progress', 'icon-status', 'icon_url');
@@ -178,7 +181,6 @@ async function loadInventory() {
     const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
     const snap = await getDocs(q);
     adminAppList.innerHTML = '';
-
     snap.forEach((appDoc) => {
         const data = appDoc.data();
         const div = document.createElement('div');
@@ -195,7 +197,6 @@ async function loadInventory() {
         `;
         adminAppList.appendChild(div);
     });
-
     document.querySelectorAll('.del-btn').forEach(btn => {
         btn.onclick = async () => {
             if(confirm('Delete app?')) {
@@ -204,7 +205,6 @@ async function loadInventory() {
             }
         };
     });
-
     document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.onclick = () => {
             const appData = snap.docs.find(d => d.id === btn.dataset.id).data();
@@ -218,19 +218,11 @@ function startEdit(id, appData) {
     editMode = true;
     isIconUploaded = true;
     isIpaUploaded = true;
-
-    document.getElementById('name').value = appData.name || '';
-    document.getElementById('section').value = appData.section || '';
-    document.getElementById('category').value = appData.category || '';
-    document.getElementById('version').value = appData.version || '';
-    document.getElementById('size').value = appData.size || '';
-    document.getElementById('bundle_id').value = appData.bundle_id || '';
-    document.getElementById('icon_url').value = appData.icon_url || '';
-    document.getElementById('download_url').value = appData.download_url || '';
-    document.getElementById('min_ios').value = appData.min_ios || '';
-    document.getElementById('features').value = appData.features || '';
-    document.getElementById('description').value = appData.description || '';
-
+    const fields = ['name', 'section', 'category', 'version', 'size', 'bundle_id', 'icon_url', 'download_url', 'min_ios', 'features', 'description'];
+    fields.forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.value = appData[f] || '';
+    });
     submitBtn.style.background = "#30d158";
     updateSubmitButton();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -239,7 +231,6 @@ function startEdit(id, appData) {
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
-
     const appObj = {
         name: document.getElementById('name').value,
         section: document.getElementById('section').value,
@@ -254,7 +245,6 @@ form.addEventListener('submit', async (e) => {
         description: document.getElementById('description').value,
         upload_date: serverTimestamp()
     };
-
     try {
         if (editMode) {
             await updateDoc(doc(db, "apps", currentEditId), appObj);
