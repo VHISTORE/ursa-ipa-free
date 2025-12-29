@@ -1,137 +1,74 @@
 :root {
-    --accent: #00d2ff;
-    --green: #30d158;
-    --glass: rgba(255, 255, 255, 0.05);
-    --nav-bg: rgba(15, 15, 15, 0.85);
+    --header-bg: rgba(0, 0, 0, 0.8); /* Полупрозрачный черный */
+    --text-color: #ffffff;
+    --badge-color: #30d158; /* Зеленый для FREE */
 }
 
+/* Базовые стили */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+    -webkit-tap-highlight-color: transparent; /* Убираем подсветку при тапе */
 }
 
 body {
-    /* Живой темный фон */
-    background: linear-gradient(135deg, #0a0a0b 0%, #16161d 50%, #0a0a0b 100%);
-    background-size: 400% 400%;
-    animation: gradientShift 12s ease infinite;
-    color: #fff;
-    font-family: -apple-system, system-ui, sans-serif;
+    /* Мягкий сине-голубой градиентный фон */
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+    background-size: 400% 400%; /* Для анимации градиента */
+    animation: gradientShift 15s ease infinite; /* Анимация градиента */
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
     height: 100vh;
-    overflow-x: hidden;
+    overflow-x: hidden; /* Убираем горизонтальный скролл */
 }
 
+/* Анимация градиента */
 @keyframes gradientShift {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
 
-/* --- ШАПКА ПО ЦЕНТРУ --- */
+/* Шапка сайта */
 .main-header {
-    padding: 40px 0 20px;
-    text-align: center;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+    position: sticky; /* Прилипает к верху при скролле */
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    padding: 20px; /* Отступы вокруг текста */
+    background: var(--header-bg); /* Полупрозрачный фон */
+    backdrop-filter: blur(15px) saturate(180%); /* Эффект "стекла" */
+    -webkit-backdrop-filter: blur(15px) saturate(180%);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1); /* Тонкая полоска снизу */
+    text-align: center; /* Центрируем содержимое шапки */
 }
 
-.title-wrapper {
-    display: inline-block;
+.header-content {
+    display: inline-block; /* Для выравнивания h1 и badge */
     position: relative;
 }
 
 .main-header h1 {
-    font-size: 30px;
-    font-weight: 900;
-    letter-spacing: 1.5px;
-    background: linear-gradient(to right, #ffffff, #a1a1a1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 26px; /* Размер заголовка */
+    font-weight: 700; /* Жирность */
+    letter-spacing: -0.3px; /* Межбуквенный интервал */
     margin: 0;
 }
 
 .badge {
-    position: absolute;
-    top: -8px;
-    right: -35px;
     font-size: 10px;
     font-weight: bold;
-    color: var(--green);
-    border: 1px solid var(--green);
+    color: var(--badge-color);
+    border: 1px solid var(--badge-color);
     padding: 2px 6px;
     border-radius: 6px;
-    letter-spacing: 0.5px;
+    margin-left: 8px;
+    vertical-align: super; /* Выравнивание по верхнему краю h1 */
 }
 
-/* --- КРАСИВАЯ ПАНЕЛЬ --- */
-.bottom-nav {
-    position: fixed;
-    bottom: 20px; /* Чуть опустили */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 94%;
-    max-width: 420px;
-    height: 75px;
-    background: var(--nav-bg);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    border-radius: 28px;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
-}
-
-/* --- КНОПКИ НАВИГАЦИИ --- */
-.nav-item {
-    background: none;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.icon-box {
-    width: 36px;
-    height: 36px;
-    background: var(--glass);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.label {
-    font-size: 10px;
-    font-weight: 600;
-    color: #8e8e93;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Состояние активной кнопки */
-.nav-item.active .icon-box {
-    background: var(--accent);
-    color: #fff;
-    transform: translateY(-6px);
-    box-shadow: 0 8px 20px rgba(0, 210, 255, 0.4);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.nav-item.active .label {
-    color: var(--accent);
-    transform: translateY(-2px);
-}
-
-/* Эффект нажатия */
-.nav-item:active {
-    transform: scale(0.85);
+/* Основной контент (пока пустой) */
+#content {
+    padding: 20px;
+    min-height: calc(100vh - 80px); /* Чтобы фон было видно, если контента мало */
 }
