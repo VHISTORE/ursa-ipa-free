@@ -10,6 +10,7 @@ import {
     increment, 
     doc 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 // Firebase configuration for ursaipa
 const firebaseConfig = {
@@ -25,9 +26,48 @@ const firebaseConfig = {
 // Initialize
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const messaging = getMessaging(app);
 
 let currentSection = 'games';
 let currentCategory = 'All';
+
+/**
+ * Push Notifications Logic
+ */
+async function requestNotifications() {
+    const statusEl = document.getElementById('notify-status');
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            const token = await getToken(messaging, { 
+                vapidKey: 'BMAUf9qk8ZkeepGWcHaffFfutJ7rAvavjGF4dvhWYZ3aUuswVAfiF2h6Pc6ZNZqT0UlkxXYT0pmJZis2LNIJBvc' 
+            });
+            
+            if (token) {
+                console.log("FCM Token:", token);
+                localStorage.setItem('ursa_notify_enabled', 'true');
+                if (statusEl) {
+                    statusEl.textContent = 'ON';
+                    statusEl.style.background = '#30d158';
+                    statusEl.style.color = 'black';
+                }
+                alert("✅ Notifications enabled! You will be notified about new IPA updates.");
+            }
+        } else {
+            alert("❌ Permission denied. Please enable notifications in your browser settings.");
+        }
+    } catch (error) {
+        console.error("Notification Error:", error);
+    }
+}
+
+// Listen for foreground messages
+onMessage(messaging, (payload) => {
+    console.log('Message received. ', payload);
+    alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
+});
+
+window.activateNotifications = requestNotifications;
 
 /**
  * Helper: Share functionality (Deep Linking)
@@ -148,7 +188,6 @@ async function openModal(appData, docId) {
     const overlay = document.getElementById('modal-overlay');
     const modalBody = document.getElementById('modal-body');
 
-    // Локально увеличиваем число для мгновенного отображения пользователю
     const displayViews = (appData.views || 0) + 1;
 
     modalBody.innerHTML = `
@@ -178,22 +217,14 @@ async function openModal(appData, docId) {
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
 
-    // --- ЛОГИКА СОХРАНЕНИЯ ПРОСМОТРА В FIREBASE ---
     if (docId) {
         try {
             const appDocRef = doc(db, "apps", docId);
-            await updateDoc(appDocRef, {
-                views: increment(1)
-            });
-        } catch (e) {
-            console.error("Error updating views:", e);
-        }
+            await updateDoc(appDocRef, { views: increment(1) });
+        } catch (e) { console.error("Error updating views:", e); }
     }
 }
 
-/**
- * Closes modal
- */
 const closeModal = () => {
     document.getElementById('modal-overlay').classList.remove('active');
     const cleanUrl = `${window.location.origin}${window.location.pathname}`;
@@ -250,18 +281,14 @@ async function updateStats() {
     try {
         const snap = await getDocs(collection(db, "apps"));
         let totalViews = 0;
-        snap.forEach(doc => {
-            totalViews += (doc.data().views || 0);
-        });
+        snap.forEach(doc => { totalViews += (doc.data().views || 0); });
 
         const filesEl = document.getElementById('stat-files');
         const viewsEl = document.getElementById('stat-views');
         
         if (filesEl) filesEl.textContent = snap.size;
         if (viewsEl) viewsEl.textContent = totalViews.toLocaleString();
-    } catch (e) {
-        console.error("Stats error:", e);
-    }
+    } catch (e) { console.error("Stats error:", e); }
 }
 
 // --- SEARCH LOGIC ---
@@ -288,15 +315,12 @@ async function performSearch(term) {
         clearSearchBtn.style.display = 'none';
         return;
     }
-
     clearSearchBtn.style.display = 'block';
     searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">Searching...</div>';
-
     try {
         const snap = await getDocs(collection(db, "apps"));
         searchResults.innerHTML = '';
         let found = false;
-
         snap.forEach(doc => {
             const data = doc.data();
             if (data.name.toLowerCase().includes(term.toLowerCase())) {
@@ -304,13 +328,8 @@ async function performSearch(term) {
                 searchResults.appendChild(createAppCard(data, doc.id));
             }
         });
-
-        if (!found) {
-            searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">No results found</div>';
-        }
-    } catch (e) {
-        console.error("Search failed:", e);
-    }
+        if (!found) searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">No results found</div>';
+    } catch (e) { console.error("Search failed:", e); }
 }
 
 searchInput.addEventListener('input', (e) => performSearch(e.target.value));
@@ -341,6 +360,10 @@ document.querySelectorAll('.nav-item').forEach(button => {
         button.classList.add('active');
         
         if (target === 'more') {
+            const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
+            const statusText = isNotifyEnabled ? 'ON' : 'OFF';
+            const statusStyle = isNotifyEnabled ? 'background: #30d158; color: black;' : '';
+
             document.getElementById('category-bar').innerHTML = '';
             document.getElementById('app-list').innerHTML = `
                 <div class="more-page">
@@ -378,6 +401,13 @@ document.querySelectorAll('.nav-item').forEach(button => {
                             </div>
                             <span class="arrow">›</span>
                         </div>
+                        <div class="more-item-link notify-btn" onclick="activateNotifications()">
+                            <div class="more-item-content">
+                                <span class="item-icon">🔔</span>
+                                <span>IPA Notifications</span>
+                            </div>
+                            <span class="notify-status" id="notify-status" style="${statusStyle}">${statusText}</span>
+                        </div>
                     </div>
 
                     <div class="more-footer">
@@ -412,9 +442,7 @@ async function checkDeepLink() {
                 const docSnap = snap.docs[0];
                 openModal(docSnap.data(), docSnap.id);
             }
-        } catch (e) {
-            console.error("Deep Link check failed:", e);
-        }
+        } catch (e) { console.error("Deep Link check failed:", e); }
     }
 }
 
