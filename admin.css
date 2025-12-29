@@ -1,3 +1,4 @@
+/* --- ПЕРЕМЕННЫЕ И ОСНОВА --- */
 :root {
     --accent: #007aff;
     --bg: #000;
@@ -6,20 +7,23 @@
     --border: rgba(255, 255, 255, 0.1);
     --text: #fff;
     --text-secondary: #8e8e93;
+    --success: #30d158;
+    --error: #ff453a;
 }
 
 body {
     background-color: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
     margin: 0;
     padding: 0;
     display: flex;
     justify-content: center;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Контейнер */
+/* --- КОНТЕЙНЕР --- */
 .admin-container {
     width: 100%;
     max-width: 650px;
@@ -27,7 +31,7 @@ body {
     box-sizing: border-box;
 }
 
-/* Шапка */
+/* --- ШАПКА --- */
 header {
     margin-bottom: 30px;
     padding-top: 10px;
@@ -45,11 +49,11 @@ h3 { font-size: 18px; margin: 25px 0 15px; color: var(--accent); text-transform:
 
 .back-link { color: var(--accent); text-decoration: none; font-size: 15px; font-weight: 500; }
 .logout-btn { 
-    background: #ff453a; color: #fff; border: none; padding: 6px 14px; 
+    background: var(--error); color: #fff; border: none; padding: 6px 14px; 
     border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 
-/* Секции (Карточки) */
+/* --- СЕКЦИИ (КАРТОЧКИ) --- */
 .admin-section {
     background: var(--card-bg);
     backdrop-filter: blur(20px);
@@ -60,7 +64,39 @@ h3 { font-size: 18px; margin: 25px 0 15px; color: var(--accent); text-transform:
     margin-bottom: 25px;
 }
 
-/* Поля ввода */
+/* --- ЗОНА ЗАГРУЗКИ (GOFILE) --- */
+.upload-zone {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 20px;
+    border-radius: 18px;
+    border: 2px dashed var(--border);
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+#upload-status {
+    margin: 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.progress-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s ease, background 0.3s ease;
+}
+
+/* --- ФОРМЫ И ИНПУТЫ --- */
 .form-group { margin-bottom: 18px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
@@ -86,9 +122,13 @@ input, select, textarea {
     transition: all 0.2s;
 }
 
-input:focus { border-color: var(--accent); background: rgba(255,255,255,0.08); outline: none; }
+input:focus, select:focus, textarea:focus { 
+    border-color: var(--accent); 
+    background: rgba(255, 255, 255, 0.08); 
+    outline: none; 
+}
 
-/* Кнопки */
+/* --- КНОПКИ --- */
 #submit-btn, #login-btn {
     width: 100%;
     background: var(--accent);
@@ -100,16 +140,17 @@ input:focus { border-color: var(--accent); background: rgba(255,255,255,0.08); o
     font-weight: 700;
     cursor: pointer;
     margin-top: 10px;
-    transition: transform 0.1s, opacity 0.2s;
+    transition: transform 0.1s, opacity 0.2s, background 0.3s;
 }
 
-#submit-btn:active { transform: scale(0.98); opacity: 0.9; }
+#submit-btn:active, #login-btn:active { transform: scale(0.98); opacity: 0.9; }
+#submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Список инвентаря */
+/* --- СПИСОК ИНВЕНТАРЯ --- */
 .admin-list { display: flex; flex-direction: column; gap: 12px; }
 
 .admin-item {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
     padding: 12px 16px;
     border-radius: 16px;
@@ -122,71 +163,61 @@ input:focus { border-color: var(--accent); background: rgba(255,255,255,0.08); o
 .admin-item-info img { border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 .admin-item-info span { font-size: 15px; font-weight: 600; }
 
-.del-btn {
-    background: rgba(255, 69, 58, 0.1);
-    color: #ff453a;
-    border: 1px solid rgba(255, 69, 58, 0.2);
-    padding: 8px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-/* Адаптивность для мобильных */
-@media (max-width: 480px) {
-    .form-row { grid-template-columns: 1fr; }
-    h1 { font-size: 24px; }
-    .admin-section { padding: 20px; }
-}
 .admin-item-actions {
     display: flex;
     gap: 8px;
 }
 
-.edit-btn {
-    background: rgba(48, 209, 88, 0.1);
-    color: #30d158;
-    border: 1px solid rgba(48, 209, 88, 0.2);
+.edit-btn, .del-btn {
     padding: 8px 14px;
     border-radius: 10px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: 0.2s;
+    border: 1px solid transparent;
 }
 
-.edit-btn:hover {
-    background: #30d158;
-    color: #fff;
+.edit-btn {
+    background: rgba(48, 209, 88, 0.1);
+    color: var(--success);
+    border-color: rgba(48, 209, 88, 0.2);
 }
+
+.edit-btn:hover { background: var(--success); color: #fff; }
 
 .del-btn {
     background: rgba(255, 69, 58, 0.1);
-    color: #ff453a;
-    border: 1px solid rgba(255, 69, 58, 0.2);
-    padding: 8px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
+    color: var(--error);
+    border-color: rgba(255, 69, 58, 0.2);
 }
 
-.del-btn:hover {
-    background: #ff453a;
-    color: #fff;
-}
+.del-btn:hover { background: var(--error); color: #fff; }
 
-/* Фикс для маленьких экранов чтобы кнопки не слипались */
-@media (max-width: 400px) {
+/* --- АДАПТИВНОСТЬ --- */
+@media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
+    h1 { font-size: 24px; }
+    .admin-section { padding: 20px; }
+    
     .admin-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
+    
     .admin-item-actions {
         width: 100%;
         justify-content: flex-end;
+    }
+}
+
+@media (max-width: 400px) {
+    .admin-item-actions {
+        justify-content: space-between;
+    }
+    .edit-btn, .del-btn {
+        flex: 1;
+        text-align: center;
     }
 }
