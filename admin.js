@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// Конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
     authDomain: "ursaipa.firebaseapp.com",
@@ -16,6 +17,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+// Данные Gofile и Admin
 const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35"; 
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; 
@@ -31,6 +33,7 @@ const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
 
+// --- УПРАВЛЕНИЕ ДОСТУПОМ ---
 onAuthStateChanged(auth, (user) => {
     if (user && user.email === ADMIN_EMAIL) {
         authContainer.style.display = 'none';
@@ -58,7 +61,7 @@ function updateSubmitButton() {
     }
 }
 
-// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР ССЫЛОК ---
+// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР DIRECT LINK (MAX COMPATIBILITY) ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -73,27 +76,36 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         const result = await response.json();
         console.log(`DirectLink Attempt ${retryCount + 1} for ${contentId}:`, result);
 
-        if (result.status === "ok" && result.data && result.data.directLinks) {
-            const dl = result.data.directLinks;
-            
-            // Если Gofile вернул массив (старая версия)
-            if (Array.isArray(dl) && dl.length > 0) {
-                return dl[0].link || dl[0].directLink;
-            } 
-            
-            // Если Gofile вернул ОБЪЕКТ (ваша версия - Май 2025)
-            // Берем первую попавшуюся ссылку внутри объекта
-            const linkKeys = Object.keys(dl);
-            if (linkKeys.length > 0) {
-                const firstKey = linkKeys[0];
-                const finalUrl = dl[firstKey].link || dl[firstKey].directLink;
-                console.log("SUCCESS! Found Link:", finalUrl);
-                return finalUrl;
+        if (result.status === "ok" && result.data) {
+            const data = result.data;
+
+            // 1. Ищем прямую строку 'link' или 'directLink' в корне data
+            if (data.link) return data.link;
+            if (data.directLink) return data.directLink;
+
+            // 2. Если внутри есть объект (например, directLinks или вложенный объект с ID)
+            // Мы перебираем все ключи и ищем внутри них поля 'link'
+            const deepSearch = (obj) => {
+                for (let key in obj) {
+                    if (typeof obj[key] === 'string' && obj[key].startsWith('http')) return obj[key];
+                    if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        const found = deepSearch(obj[key]);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            const foundUrl = deepSearch(data);
+            if (foundUrl) {
+                console.log("🚀 SUCCESS! Link extracted via DeepSearch:", foundUrl);
+                return foundUrl;
             }
         }
 
+        // Логика повторов
         if (retryCount < 5) {
-            console.log("Link not found in response, retrying in 3s...");
+            console.log("URL not found in response yet, retrying in 3s...");
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
         }
@@ -104,6 +116,7 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
     }
 }
 
+// --- ЗАГРУЗКА ФАЙЛА В ROOT ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -134,7 +147,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
                     status.textContent = "🔗 Fetching Direct Link...";
                     const fileId = res.data.id;
                     
-                    // Пауза перед запросом ссылки (индексация)
+                    // Пауза 2 сек для индексации на серверах Gofile
                     await new Promise(r => setTimeout(r, 2000));
 
                     const directUrl = await createAndGetDirectLink(fileId);
@@ -165,9 +178,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
     }
 }
 
-// ... ОСТАЛЬНАЯ ЧАСТЬ КОДА (loadInventory, startEdit, form listener) ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ...
-// Но для целостности продублирую слушатели и сброс:
-
+// СЛУШАТЕЛИ ФАЙЛОВ
 document.getElementById('icon-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'icon-progress', 'icon-status', 'icon_url');
 };
@@ -176,6 +187,7 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
+// ИНВЕНТАРЬ И РЕДАКТИРОВАНИЕ
 async function loadInventory() {
     adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
     const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
