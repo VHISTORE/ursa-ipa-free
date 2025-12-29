@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URSA Admin Panel</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header>
+            <h1>Add New App/Game</h1>
+            <a href="index.html" class="back-link">← Back to Site</a>
+        </header>
+
+        <form id="add-app-form">
+            <div class="form-group">
+                <label>App Name</label>
+                <input type="text" id="name" placeholder="e.g. Minecraft" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Section</label>
+                    <select id="section" required>
+                        <option value="games">Games</option>
+                        <option value="apps">Apps</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <input type="text" id="category" placeholder="e.g. Action" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Version</label>
+                    <input type="text" id="version" placeholder="1.20.1" required>
+                </div>
+                <div class="form-group">
+                    <label>Size</label>
+                    <input type="text" id="size" placeholder="150 MB" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Bundle ID</label>
+                <input type="text" id="bundle_id" placeholder="com.mojang.minecraftpe" required>
+            </div>
+
+            <div class="form-group">
+                <label>Icon URL</label>
+                <input type="url" id="icon_url" placeholder="https://..." required>
+            </div>
+
+            <div class="form-group">
+                <label>Download URL (IPA)</label>
+                <input type="url" id="download_url" placeholder="https://..." required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Min iOS</label>
+                    <input type="text" id="min_ios" placeholder="14.0" required>
+                </div>
+                <div class="form-group">
+                    <label>Features</label>
+                    <input type="text" id="features" placeholder="Mod Menu / Unlimited Money">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="description" rows="4" placeholder="Enter app description..."></textarea>
+            </div>
+
+            <button type="submit" id="submit-btn">Publish to Firestore</button>
+        </form>
+    </div>
+
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
