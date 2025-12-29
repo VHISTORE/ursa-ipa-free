@@ -50,7 +50,7 @@ body::after {
     to { transform: rotate(360deg); }
 }
 
-/* --- ШАПКА --- */
+/* --- КОМПАКТНАЯ ШАПКА --- */
 .main-header {
     position: sticky;
     top: 0;
@@ -113,25 +113,25 @@ body::after {
     50% { opacity: 0.2; filter: brightness(0.8); }
 }
 
-/* --- ПАНЕЛЬ НАВИГАЦИИ --- */
+/* --- ПАНЕЛЬ НАВИГАЦИИ (ОПУЩЕНА НИЖЕ) --- */
 .bottom-nav {
     position: fixed;
-    bottom: 25px;
+    bottom: 15px; /* Опустили с 25px до 15px */
     left: 50%;
     transform: translateX(-50%);
-    width: 90%;
-    max-width: 400px;
-    height: 65px;
-    background: rgba(0, 0, 0, 0.5);
+    width: 92%;
+    max-width: 420px;
+    height: 60px; /* Сделали чуть компактнее */
+    background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-radius: 22px;
+    border-radius: 20px;
     border: 0.5px solid rgba(255, 255, 255, 0.1);
     display: flex;
     justify-content: space-around;
     align-items: center;
     z-index: 1000;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .nav-item {
@@ -141,20 +141,20 @@ body::after {
     flex-direction: column;
     align-items: center;
     flex: 1;
-    gap: 4px;
+    gap: 2px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .nav-icon {
-    font-size: 20px;
+    font-size: 18px;
     opacity: 0.4;
     filter: grayscale(1);
     transition: 0.3s;
 }
 
 .nav-label {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     color: #8e8e93;
     text-transform: uppercase;
@@ -164,7 +164,7 @@ body::after {
 .nav-item.active .nav-icon {
     opacity: 1;
     filter: grayscale(0);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 .nav-item.active .nav-label {
@@ -178,5 +178,7 @@ body::after {
 #content {
     position: relative;
     z-index: 1;
-    padding: 20px;
+    padding: 15px;
+    height: calc(100vh - 100px);
+    overflow-y: auto;
 }
