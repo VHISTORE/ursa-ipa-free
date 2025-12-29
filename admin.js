@@ -26,6 +26,7 @@ let currentEditId = null;
 let isIconUploaded = false;
 let isIpaUploaded = false;
 
+// Элементы интерфейса
 const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
@@ -49,6 +50,7 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
 document.getElementById('logout-btn').onclick = () => signOut(auth);
 
+// --- ПРОВЕРКА ГОТОВНОСТИ КНОПКИ ---
 function updateSubmitButton() {
     if (isIconUploaded && isIpaUploaded) {
         submitBtn.disabled = false;
@@ -60,33 +62,37 @@ function updateSubmitButton() {
     }
 }
 
-// --- УЛУЧШЕННОЕ СОЗДАНИЕ DIRECT LINK (С ПОВТОРАМИ) ---
-async function createDirectLink(contentId, retryCount = 0) {
+// --- УЛУЧШЕННОЕ ПОЛУЧЕНИЕ DIRECT LINK (API МАЙ 2025) ---
+async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
+        // Шаг 1: Принудительное создание ссылки
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GOFILE_TOKEN}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({}) 
+            body: JSON.stringify({
+                expireTime: 4102444800 // Срок до 2100 года
+            })
         });
-        const result = await response.json();
         
+        const result = await response.json();
         console.log(`Attempt ${retryCount + 1} for ${contentId}:`, result);
 
-        // Проверяем наличие массива ссылок
+        // Шаг 2: Проверка наличия ссылки в ответе
         if (result.status === "ok" && result.data && result.data.directLinks && result.data.directLinks.length > 0) {
-            // В новом API поле может называться 'directLink' или 'link'
+            // Возвращаем поле directLink или link (универсально)
             return result.data.directLinks[0].directLink || result.data.directLinks[0].link;
         }
 
-        // Если ссылки еще нет (индексация), пробуем снова через 2 секунды (до 3 раз)
-        if (retryCount < 3) {
-            console.log("Link not ready yet, retrying in 2s...");
-            await new Promise(r => setTimeout(r, 2000));
-            return await createDirectLink(contentId, retryCount + 1);
+        // Шаг 3: Retry logic (ждем индексации файла)
+        if (retryCount < 4) {
+            console.log("DirectLink not ready yet, retrying in 2.5s...");
+            await new Promise(r => setTimeout(r, 2500));
+            return await createAndGetDirectLink(contentId, retryCount + 1);
         }
+        
         return null;
     } catch (e) {
         console.error("DirectLink API Error:", e);
@@ -102,34 +108,35 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
 
     try {
         status.style.color = "white";
-        status.textContent = "🚀 Uploading to Gofile...";
+        status.textContent = "🚀 Starting upload...";
         
         const formData = new FormData();
         formData.append('file', file);
 
         const xhr = new XMLHttpRequest();
+        // Глобальный эндпоинт загрузки
         xhr.open('POST', 'https://upload.gofile.io/uploadfile');
         xhr.setRequestHeader('Authorization', `Bearer ${GOFILE_TOKEN}`);
 
         xhr.upload.onprogress = (e) => {
             const percent = (e.loaded / e.total) * 100;
             progress.style.width = percent + "%";
-            status.textContent = `Progress: ${Math.round(percent)}%`;
+            status.textContent = `Uploading: ${Math.round(percent)}%`;
         };
 
         xhr.onload = async function() {
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.status === "ok") {
-                    status.textContent = "🔗 Generating Direct Link...";
+                    status.textContent = "🔗 Processing Direct Link...";
                     const contentId = res.data.id;
                     
-                    // Первая задержка 1.5 сек перед первым запросом ссылки
-                    await new Promise(r => setTimeout(r, 1500));
+                    // Небольшая пауза перед первым запросом
+                    await new Promise(r => setTimeout(r, 1000));
 
-                    const directUrl = await createDirectLink(contentId);
+                    const directUrl = await createAndGetDirectLink(contentId);
                     
-                    // Если прямая ссылка создана - берем её, иначеFallback на обычную
+                    // Если Direct Link получен - берем его, иначе Fallback на обычную страницу
                     const finalUrl = directUrl || res.data.downloadPage;
                     
                     hiddenInput.value = finalUrl; 
@@ -157,6 +164,9 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
     }
 }
 
+
+
+// Слушатели выбора файлов
 document.getElementById('icon-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'icon-progress', 'icon-status', 'icon_url');
 };
