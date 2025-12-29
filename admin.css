@@ -51,6 +51,7 @@ h3 { font-size: 18px; margin: 25px 0 15px; color: var(--accent); text-transform:
 .logout-btn { 
     background: var(--error); color: #fff; border: none; padding: 6px 14px; 
     border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    -webkit-appearance: none;
 }
 
 /* --- SECTIONS (CARDS) --- */
@@ -170,15 +171,17 @@ input, select, textarea {
     font-size: 16px;
     box-sizing: border-box;
     transition: all 0.2s;
+    -webkit-appearance: none; /* Убирает системные стили iOS */
 }
 
-/* Specific styling for multi-line description */
+/* КРИТИЧЕСКИ ВАЖНО: Фикс многострочного текста для списков модов */
 textarea {
     resize: vertical;
-    min-height: 120px;
+    min-height: 160px;
     line-height: 1.5;
-    white-space: pre-wrap;
+    white-space: pre-wrap !important; /* Сохраняет переносы строк */
     font-family: inherit;
+    word-break: break-word;
 }
 
 input:focus, select:focus, textarea:focus { 
@@ -188,7 +191,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* --- BUTTONS --- */
-#submit-btn, #login-btn {
+#submit-btn, #login-btn, .submit-btn-main {
     width: 100%;
     background: var(--accent);
     color: #fff;
@@ -200,10 +203,20 @@ input:focus, select:focus, textarea:focus {
     cursor: pointer;
     margin-top: 10px;
     transition: transform 0.1s, opacity 0.2s, background 0.3s;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-#submit-btn:active, #login-btn:active { transform: scale(0.98); opacity: 0.9; }
-#submit-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #3a3a3c !important; }
+#submit-btn:active, #login-btn:active, .submit-btn-main:active { 
+    transform: scale(0.98); 
+    opacity: 0.9; 
+}
+
+#submit-btn:disabled { 
+    opacity: 0.5; 
+    cursor: not-allowed; 
+    background: #3a3a3c !important; 
+}
 
 /* --- INVENTORY LIST --- */
 .admin-list { display: flex; flex-direction: column; gap: 12px; }
@@ -242,6 +255,7 @@ input:focus, select:focus, textarea:focus {
     cursor: pointer;
     transition: 0.2s;
     border: 1px solid transparent;
+    -webkit-appearance: none;
 }
 
 .edit-btn {
