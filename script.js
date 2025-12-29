@@ -11,7 +11,6 @@ import {
     doc 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
-// Добавлен импорт для работы с облачными функциями
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
 // Firebase configuration
@@ -29,27 +28,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const messaging = getMessaging(app);
-const functions = getFunctions(app); // Инициализация функций для подписки
+const functions = getFunctions(app);
 
 let currentSection = 'games';
 let currentCategory = 'All';
 
 /**
- * Логика уведомлений (PWA & iOS)
+ * Notification Logic (Optimized for iOS PWA)
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
     
     if (!('Notification' in window)) {
-        alert("Уведомления не поддерживаются вашим браузером.");
+        alert("Notifications are not supported by your browser.");
         return;
     }
 
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
+    // Show Instruction Modal for iOS users not in PWA mode
     if (isIOS && !isStandalone) {
-        alert("🍎 Чтобы включить уведомления на iOS:\n1. Нажмите кнопку 'Поделиться' в Safari.\n2. Выберите 'На экран Домой'.\n3. Запустите URSA с рабочего стола и попробуйте снова!");
+        showiOSInstructions();
         return;
     }
 
@@ -61,7 +61,7 @@ window.activateNotifications = async function() {
         if (permission === 'granted') {
             const registration = await navigator.serviceWorker.getRegistration();
             if (!registration) {
-                alert("Service Worker не найден. Обновите страницу.");
+                alert("Service Worker not found. Please refresh the page.");
                 return;
             }
 
@@ -73,13 +73,13 @@ window.activateNotifications = async function() {
             if (token) {
                 console.log("FCM Token:", token);
 
-                // АВТОМАТИЧЕСКАЯ ПОДПИСКА НА ТЕМУ 'all'
+                // Subscribe to 'all' topic via Cloud Function
                 try {
                     const subscribe = httpsCallable(functions, 'subscribeToTopic');
                     await subscribe({ token: token });
-                    console.log("Успешно подписан на тему: all");
+                    console.log("Successfully subscribed to topic: all");
                 } catch (subErr) {
-                    console.error("Ошибка подписки через Cloud Functions:", subErr);
+                    console.error("Cloud Function subscription error:", subErr);
                 }
 
                 localStorage.setItem('ursa_notify_enabled', 'true');
@@ -89,26 +89,67 @@ window.activateNotifications = async function() {
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
-                alert("✅ Уведомления успешно включены!");
+                alert("✅ Notifications successfully enabled!");
             }
         } else {
             if (statusEl) statusEl.textContent = 'OFF';
-            alert("❌ Доступ запрещен. Проверьте настройки уведомлений.");
+            alert("❌ Permission denied. Please check your browser notification settings.");
         }
     } catch (error) {
         console.error("Notification Error:", error);
         if (statusEl) statusEl.textContent = 'OFF';
-        alert("Система уведомлений недоступна: " + error.message);
+        alert("Notification system unavailable: " + error.message);
     }
 };
 
+/**
+ * iOS PWA Instructions Modal
+ */
+function showiOSInstructions() {
+    const overlay = document.createElement('div');
+    overlay.id = "pwa-instr-overlay";
+    overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20000; display:flex; align-items:flex-end;";
+    
+    const modal = document.createElement('div');
+    modal.style = "width:100%; background:#1c1c1e; border-radius:20px 20px 0 0; padding:30px; color:white; font-family:-apple-system, system-ui, sans-serif; box-sizing:border-box; border-top:1px solid #333; animation: slideUp 0.3s ease-out;";
+    
+    modal.innerHTML = `
+        <div style="text-align:center;">
+            <div style="width:40px; height:5px; background:#333; border-radius:10px; margin: 0 auto 20px;"></div>
+            <h2 style="margin-bottom:10px;">Enable Notifications</h2>
+            <p style="opacity:0.7; font-size:15px; line-height:1.4; margin-bottom:25px;">On iOS, notifications only work when URSA is added to your Home Screen.</p>
+            
+            <div style="text-align:left; background:#2c2c2e; padding:20px; border-radius:15px; margin-bottom:25px;">
+                <div style="margin-bottom:15px; display:flex; align-items:center;">
+                    <span style="background:#007aff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-right:12px; font-weight:bold; font-size:13px;">1</span>
+                    <span>Tap the <b>Share</b> button <img src="https://cdn-icons-png.flaticon.com/512/702/702337.png" width="16" style="filter:invert(1); margin-left:5px; vertical-align:middle;"></span>
+                </div>
+                <div style="margin-bottom:15px; display:flex; align-items:center;">
+                    <span style="background:#007aff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-right:12px; font-weight:bold; font-size:13px;">2</span>
+                    <span>Scroll down and select <b>'Add to Home Screen'</b></span>
+                </div>
+                <div style="display:flex; align-items:center;">
+                    <span style="background:#007aff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-right:12px; font-weight:bold; font-size:13px;">3</span>
+                    <span>Open <b>URSA</b> from your Home Screen</span>
+                </div>
+            </div>
+            
+            <button onclick="document.getElementById('pwa-instr-overlay').remove()" style="width:100%; padding:16px; background:#007aff; border:none; border-radius:12px; color:white; font-size:16px; font-weight:bold; -webkit-appearance:none;">Got it</button>
+        </div>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+// Listen for messages while app is open
 onMessage(messaging, (payload) => {
     console.log('Message received. ', payload);
     alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
 });
 
 /**
- * Вспомогательные функции (Share, Format, Render)
+ * Helper Functions
  */
 window.shareApp = (bundleId) => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?id=${bundleId}`;
@@ -125,7 +166,7 @@ window.shareApp = (bundleId) => {
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
-        alert('Ссылка скопирована!');
+        alert('Link copied to clipboard!');
     }
 };
 
@@ -270,7 +311,6 @@ async function updateStats() {
     } catch (e) {}
 }
 
-// SEARCH LOGIC
 const searchOverlay = document.getElementById('search-overlay');
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
@@ -303,7 +343,6 @@ searchInput.addEventListener('input', (e) => performSearch(e.target.value));
 clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; searchInput.focus(); });
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
-// BOTTOM NAVIGATION
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
         const target = button.getAttribute('data-target');
@@ -320,13 +359,13 @@ document.querySelectorAll('.nav-item').forEach(button => {
                 <div class="more-page">
                     <div class="more-header-brand">
                         <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
-                        <h2>URSA IPA Company</h2>
+                        <h2 style="color:white; margin-top:10px;">URSA IPA Company</h2>
                     </div>
                     <div class="more-group">
                         <div class="stats-card">
                             <div class="stat-box"><span class="stat-value" id="stat-files">...</span><span class="stat-label">FILES</span></div>
                             <div class="stat-divider"></div>
-                            <div class="stat-box"><span class="stat-value" id="stat-views">...</span><span class="stat-label">TOTAL VIEWS</span></div>
+                            <div class="stat-box"><span class="stat-value" id="stat-views">...</span><span class="stat-label">VIEWS</span></div>
                         </div>
                     </div>
                     <div class="more-group">
