@@ -22,10 +22,6 @@ const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35";
 const ADMIN_EMAIL = "vibemusic1712@gmail.com";
 const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; 
 
-// --- НАСТРОЙКА УВЕДОМЛЕНИЙ ---
-// ВСТАВЬТЕ СЮДА ВАШ LEGACY SERVER KEY ИЗ НАСТРОЕК FIREBASE
-const SERVER_KEY = "ЗДЕСЬ_ВАШ_КЛЮЧ_СЕРВЕРА"; 
-
 let editMode = false;
 let currentEditId = null;
 let isIconUploaded = false;
@@ -38,42 +34,6 @@ const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
 const searchInput = document.getElementById('inventory-search');
-
-// --- УТИЛИТА ОТПРАВКИ ПУША ---
-async function sendPushNotification(appName, version, isNew) {
-    if (!SERVER_KEY || SERVER_KEY === "ЗДЕСЬ_ВАШ_КЛЮЧ_СЕРВЕРА") {
-        console.warn("Server Key not set. Notification skipped.");
-        return;
-    }
-
-    const title = isNew ? "🆕 New IPA Available!" : "🆙 New Update!";
-    const body = `${appName} | v${version} ${isNew ? 'is now added' : 'has been updated'} in URSA IPA.`;
-
-    try {
-        const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `key=${SERVER_KEY}`
-            },
-            body: JSON.stringify({
-                to: "/topics/all",
-                notification: {
-                    title: title,
-                    body: body,
-                    icon: "https://vhistore.github.io/ursa-ipa-free/icons/logoursa.jpeg",
-                    click_action: "https://vhistore.github.io/ursa-ipa-free/",
-                    sound: "default"
-                },
-                priority: "high"
-            })
-        });
-        const result = await response.json();
-        console.log("FCM Result:", result);
-    } catch (e) {
-        console.error("Push Error:", e);
-    }
-}
 
 // --- УТИЛИТА ДЛЯ РАЗМЕРА ФАЙЛА ---
 function formatBytes(bytes, decimals = 2) {
@@ -299,14 +259,11 @@ form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
 
-    const appName = document.getElementById('name').value;
-    const appVersion = document.getElementById('version').value;
-
     const appObj = {
-        name: appName,
+        name: document.getElementById('name').value,
         section: document.getElementById('section').value,
         category: document.getElementById('category').value.toLowerCase(),
-        version: appVersion,
+        version: document.getElementById('version').value,
         size: document.getElementById('size').value,
         bundle_id: document.getElementById('bundle_id').value,
         icon_url: document.getElementById('icon_url').value, 
@@ -320,17 +277,13 @@ form.addEventListener('submit', async (e) => {
     try {
         if (editMode) {
             await updateDoc(doc(db, "apps", currentEditId), appObj);
-            // Отправляем пуш (Update)
-            await sendPushNotification(appName, appVersion, false);
         } else {
             appObj.views = 0;
             await addDoc(collection(db, "apps"), appObj);
-            // Отправляем пуш (New)
-            await sendPushNotification(appName, appVersion, true);
         }
         resetForm();
         loadInventory();
-        alert("Success! Data saved and notification sent.");
+        alert("Success! The Cloud Function will now notify users.");
     } catch (err) { alert(err.message); }
     submitBtn.disabled = false;
 });
