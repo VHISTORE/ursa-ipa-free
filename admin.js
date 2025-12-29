@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Конфигурация Firebase
+// Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCQxz47mev45XXLz3ejJViVQCzFL_Fo3z8",
     authDomain: "ursaipa.firebaseapp.com",
@@ -17,8 +17,9 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Данные Gofile и Admin
+// Gofile & Admin Data
 const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35"; 
+// Исправлено: список админов
 const ADMIN_EMAILS = ["vibemusic1712@gmail.com", "Wasmachensachenh@gmail.com"];
 const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; 
 
@@ -35,7 +36,7 @@ const adminAppList = document.getElementById('admin-app-list');
 const submitBtn = document.getElementById('submit-btn');
 const searchInput = document.getElementById('inventory-search');
 
-// --- УТИЛИТА ДЛЯ РАЗМЕРА ФАЙЛА ---
+// --- FILE SIZE UTILITY ---
 function formatBytes(bytes, decimals = 2) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -45,15 +46,19 @@ function formatBytes(bytes, decimals = 2) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-// --- УПРАВЛЕНИЕ ДОСТУПОМ ---
+// --- ACCESS CONTROL (Fixed Error) ---
 onAuthStateChanged(auth, (user) => {
-    if (user && user.email === ADMIN_EMAIL) {
+    // Исправлено: используем ADMIN_EMAILS.includes()
+    if (user && ADMIN_EMAILS.includes(user.email)) {
         authContainer.style.display = 'none';
         adminMain.style.display = 'block';
         document.getElementById('admin-email').textContent = user.email;
         loadInventory();
     } else {
-        if (user) signOut(auth);
+        if (user) {
+            alert("Access Denied! You are not an authorized administrator.");
+            signOut(auth);
+        }
         authContainer.style.display = 'block';
         adminMain.style.display = 'none';
     }
@@ -69,11 +74,11 @@ function updateSubmitButton() {
         submitBtn.style.background = "#007aff";
     } else {
         submitBtn.disabled = true;
-        submitBtn.textContent = "Waiting for DirectLinks...";
+        submitBtn.textContent = "Waiting for uploads...";
     }
 }
 
-// --- УНИВЕРСАЛЬНЫЙ ПАРСЕР ССЫЛОК ---
+// --- DIRECT LINK PARSER ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
@@ -110,7 +115,7 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
     } catch (e) { return null; }
 }
 
-// --- ЗАГРУЗКА ФАЙЛА ---
+// --- FILE UPLOAD ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -148,7 +153,7 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
                     const finalUrl = directUrl || res.data.downloadPage;
                     
                     hiddenInput.value = finalUrl; 
-                    status.textContent = directUrl ? "✅ Direct Link Ready!" : "⚠️ Fallback Link Ready";
+                    status.textContent = directUrl ? "✅ Ready!" : "⚠️ Fallback Ready";
                     status.style.color = directUrl ? "#30d158" : "#ff9f0a";
                     progress.style.background = directUrl ? "#30d158" : "#ff9f0a";
                     
@@ -176,7 +181,7 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
-// --- СИСТЕМА ИНВЕНТАРЯ ---
+// --- INVENTORY SYSTEM ---
 async function loadInventory() {
     adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
     try {
@@ -215,7 +220,7 @@ function renderList(apps) {
 
     document.querySelectorAll('.del-btn').forEach(btn => {
         btn.onclick = async () => {
-            if(confirm('Delete app?')) {
+            if(confirm('Are you sure you want to delete this app?')) {
                 await deleteDoc(doc(db, "apps", btn.dataset.id));
                 loadInventory();
             }
@@ -283,8 +288,8 @@ form.addEventListener('submit', async (e) => {
         }
         resetForm();
         loadInventory();
-        alert("Success! The Cloud Function will now notify users.");
-    } catch (err) { alert(err.message); }
+        alert("Success! Data saved.");
+    } catch (err) { alert("Error: " + err.message); }
     submitBtn.disabled = false;
 });
 
@@ -297,8 +302,8 @@ function resetForm() {
     submitBtn.style.background = "#007aff";
     document.getElementById('icon-progress').style.width = "0%";
     document.getElementById('ipa-progress').style.width = "0%";
-    document.getElementById('icon-status').textContent = "Tap to upload icon";
-    document.getElementById('ipa-status').textContent = "Tap to select .ipa";
+    document.getElementById('icon-status').textContent = "Upload Icon";
+    document.getElementById('ipa-status').textContent = "Upload .ipa";
     document.getElementById('icon-preview').innerHTML = "📸";
     updateSubmitButton();
 }
