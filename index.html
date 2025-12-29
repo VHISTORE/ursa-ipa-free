@@ -17,9 +17,20 @@
 
     <main id="content">
         <div id="category-bar" class="category-bar"></div>
-        
         <div id="app-list"></div>
     </main>
+
+    <div id="search-overlay" class="search-overlay">
+        <div class="search-header">
+            <div class="search-input-wrapper">
+                <span class="search-icon-inner">🔍</span>
+                <input type="text" id="search-input" placeholder="Search Games & Apps..." autocomplete="off">
+                <button id="clear-search" class="clear-btn">×</button>
+            </div>
+            <button id="cancel-search" class="cancel-btn">Cancel</button>
+        </div>
+        <div id="search-results" class="search-results"></div>
+    </div>
 
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
