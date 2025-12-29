@@ -32,7 +32,7 @@ const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
-const submitBtn = document.getElementById('submit-btn');
+const submitBtn = document.getElementById('manual-submit-btn') || document.getElementById('submit-btn');
 const searchInput = document.getElementById('inventory-search');
 
 // --- FILE SIZE UTILITY ---
@@ -89,10 +89,7 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
         });
         
         const result = await response.json();
-        if (result.status === "ok" && result.data) {
-            const data = result.data;
-            if (data.link) return data.link;
-        }
+        if (result.status === "ok" && result.data && result.data.link) return result.data.link;
         if (retryCount < 5) {
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
@@ -242,19 +239,18 @@ function startEdit(id, appData) {
     });
     document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
     
-    // БАГ 1 ФИКС: Плавный скролл к форме при нажатии Edit
-    const formElement = document.getElementById('add-app-form');
-    if (formElement) {
-        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // ФИКС СКРОЛЛА: Плавный скролл к форме при нажатии Edit
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     submitBtn.style.background = "#30d158";
     updateSubmitButton();
 }
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+// ОСНОВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ
+const handleSave = async () => {
+    if (submitBtn.disabled) return;
     submitBtn.disabled = true;
+    submitBtn.textContent = "Saving...";
 
     const appObj = {
         name: document.getElementById('name').value,
@@ -282,8 +278,12 @@ form.addEventListener('submit', async (e) => {
         loadInventory();
         alert("Success! Data saved.");
     } catch (err) { alert("Error: " + err.message); }
-    submitBtn.disabled = false;
-});
+    updateSubmitButton();
+};
+
+// Привязываем сохранение и к событию submit (ПК) и к клику по кнопке (iPhone)
+form.addEventListener('submit', (e) => { e.preventDefault(); handleSave(); });
+if (submitBtn) { submitBtn.onclick = () => { if(!submitBtn.disabled) handleSave(); } };
 
 function resetForm() {
     form.reset();
@@ -294,20 +294,16 @@ function resetForm() {
     submitBtn.style.background = "#007aff";
     document.getElementById('icon-progress').style.width = "0%";
     document.getElementById('ipa-progress').style.width = "0%";
-    document.getElementById('icon-status').textContent = "Upload Icon";
-    document.getElementById('ipa-status').textContent = "Upload .ipa";
     document.getElementById('icon-preview').innerHTML = "📸";
     updateSubmitButton();
 }
 
-// БАГ 2 ФИКС: Разрешаем перенос строк во всех textarea и блокируем авто-сабмит в инпутах
+// ФИКС ENTER: Разрешаем перенос строк в TEXTAREA и блокируем авто-сабмит в INPUT
 form.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-        // Если это textarea (Features или Description), разрешаем переход на новую строку
         if (e.target.tagName === 'TEXTAREA') {
             e.stopPropagation(); 
         } else {
-            // Если это любой другой input (Name, Version и т.д.), блокируем Enter, чтобы не сохраняло запись случайно
             e.preventDefault();
             return false;
         }
