@@ -1,9 +1,10 @@
 :root {
-    --header-bg: rgba(0, 0, 0, 0.5); /* Чуть прозрачнее для лучшего эффекта стекла */
+    --header-bg: rgba(0, 0, 0, 0.7); /* Чуть прозрачнее для контраста с ярким фоном */
     --text-color: #ffffff;
     --badge-color: #30d158;
 }
 
+/* Базовые стили */
 * {
     margin: 0;
     padding: 0;
@@ -12,54 +13,40 @@
 }
 
 body {
-    margin: 0;
-    width: 100%;
-    min-height: 100vh;
+    /* Более яркая и светлая палитра синего и голубого */
+    background: linear-gradient(
+        45deg, 
+        #007aff, 
+        #00d2ff, 
+        #3a7bd5, 
+        #00c6ff, 
+        #007aff
+    );
+    background-size: 300% 300%; /* Уменьшили размер для более частой смены цветов */
+    animation: activeGradient 8s ease-in-out infinite; /* Ускорили анимацию с 15с до 8с */
     color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    background-color: #050a15; /* Базовый глубокий темный */
+    height: 100vh;
     overflow-x: hidden;
     position: relative;
 }
 
-/* Анимированные световые пятна */
-body::before, body::after {
+/* Добавляем эффект "шума" поверх для стиля */
+body::after {
     content: "";
     position: fixed;
-    width: 80vw;
-    height: 80vw;
-    border-radius: 50%;
-    z-index: -1;
-    filter: blur(80px); /* Сильное размытие для мягкости */
-    opacity: 0.4;
-    animation: moveLight 20s ease-in-out infinite alternate;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
 }
 
-body::before {
-    background: radial-gradient(circle, #1e3c72, #2a5298);
-    top: -20%;
-    left: -20%;
-}
-
-body::after {
-    background: radial-gradient(circle, #00d2ff, #3a7bd5);
-    bottom: -10%;
-    right: -10%;
-    animation-delay: -5s; /* Разносим анимации по времени */
-    animation-duration: 25s;
-}
-
-/* Анимация плавного перемещения */
-@keyframes moveLight {
-    0% {
-        transform: translate(0, 0) scale(1);
-    }
-    50% {
-        transform: translate(20%, 15%) scale(1.1);
-    }
-    100% {
-        transform: translate(-10%, 25%) scale(0.9);
-    }
+/* Ускоренная и более амплитудная анимация */
+@keyframes activeGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* Шапка сайта */
@@ -68,48 +55,43 @@ body::after {
     top: 0;
     z-index: 1000;
     width: 100%;
-    padding: 22px 20px;
+    padding: 22px;
     background: var(--header-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.15);
     text-align: center;
 }
 
 .header-content {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
+    position: relative;
 }
 
 .main-header h1 {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 800;
-    letter-spacing: 2px;
-    text-transform: uppercase;
+    letter-spacing: 1px;
     margin: 0;
-    /* Эффект сияющего текста */
-    background: linear-gradient(180deg, #fff 0%, #a5c7ff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
 .badge {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 900;
     color: var(--badge-color);
-    border: 1px solid var(--badge-color);
-    background: rgba(48, 209, 88, 0.05);
-    padding: 2px 6px;
-    border-radius: 5px;
-    margin-left: 10px;
-    box-shadow: 0 0 10px rgba(48, 209, 88, 0.2);
-    text-transform: uppercase;
+    border: 1.5px solid var(--badge-color);
+    padding: 1px 6px;
+    border-radius: 7px;
+    margin-left: 8px;
+    vertical-align: middle;
+    background: rgba(48, 209, 88, 0.1);
+    box-shadow: 0 0 8px rgba(48, 209, 88, 0.3);
 }
 
 #content {
     position: relative;
-    z-index: 1; /* Чтобы контент был над пятнами */
+    z-index: 1;
     padding: 20px;
+    min-height: calc(100vh - 80px);
 }
