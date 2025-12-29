@@ -48,7 +48,7 @@
                 
                 <div class="form-group">
                     <label>App Name</label>
-                    <input type="text" id="name" required placeholder="Name">
+                    <input type="text" id="name" required placeholder="e.g. Minecraft">
                 </div>
                 
                 <div class="form-row">
@@ -61,7 +61,7 @@
                     </div>
                     <div class="form-group">
                         <label>Category</label>
-                        <input type="text" id="category" required placeholder="Action">
+                        <input type="text" id="category" required placeholder="e.g. Action">
                     </div>
                 </div>
 
@@ -83,12 +83,12 @@
 
                 <div class="form-group">
                     <label>Icon URL</label>
-                    <input type="url" id="icon_url" required placeholder="https://...">
+                    <input type="url" id="icon_url" required placeholder="https://image-link.png">
                 </div>
 
                 <div class="form-group">
                     <label>IPA Direct Link (Manual)</label>
-                    <input type="url" id="manual_url_display" placeholder="Will be filled automatically after upload or enter manually">
+                    <input type="url" id="manual_url_display" placeholder="Auto-filled after upload or enter manually">
                 </div>
 
                 <div class="form-row">
@@ -112,24 +112,42 @@
         </section>
 
         <section class="admin-section">
-            <div class="section-header">
-                <h3>Inventory</h3>
-                <span class="refresh-hint">Click "Edit" to load into Editor</span>
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Inventory</h3>
+                <span class="refresh-hint" style="font-size: 11px; opacity: 0.5;">Click "Edit" to load into Editor</span>
             </div>
             <div id="admin-app-list" class="admin-list">
                 </div>
         </section>
 
-        <footer class="admin-footer" style="text-align: center; opacity: 0.3; font-size: 10px; margin-top: 20px;">
+        <footer class="admin-footer" style="text-align: center; opacity: 0.3; font-size: 10px; margin-top: 20px; padding-bottom: 20px;">
             URSA IPA Management System • 2025
         </footer>
     </div>
 
     <script type="module" src="admin.js"></script>
+
     <script>
-        // Небольшой вспомогательный скрипт для синхронизации полей URL
-        document.getElementById('manual_url_display').addEventListener('input', function(e) {
-            document.getElementById('download_url').value = e.target.value;
+        const manualInput = document.getElementById('manual_url_display');
+        const hiddenInput = document.getElementById('download_url');
+
+        manualInput.addEventListener('input', function(e) {
+            hiddenInput.value = e.target.value;
+        });
+
+        // Наблюдатель за скрытым полем (чтобы обновлять визуальное при авто-загрузке)
+        const observer = new MutationObserver(() => {
+            manualInput.value = hiddenInput.value;
+        });
+        
+        // Для отслеживания изменений атрибута value в JS
+        const originalValue = hiddenInput.value;
+        Object.defineProperty(hiddenInput, 'value', {
+            get: function() { return this.getAttribute('value'); },
+            set: function(val) {
+                this.setAttribute('value', val);
+                manualInput.value = val;
+            }
         });
     </script>
 </body>
