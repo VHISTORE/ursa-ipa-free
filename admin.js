@@ -19,7 +19,7 @@ const provider = new GoogleAuthProvider();
 
 // Gofile & Admin Data
 const GOFILE_TOKEN = "1CXC2VQ263Z4TctNDGiWkE935MnTki35"; 
-const ADMIN_EMAILS = ["vibemusic1712@gmail.com", "Wasmachensachenh@gmail.com", "maximguf10@gmail.com;
+const ADMIN_EMAILS = ["vibemusic1712@gmail.com", "Wasmachensachenh@gmail.com", "maximguf10@gmail.com"];
 const ROOT_FOLDER_ID = "f6473757-cc2b-42b4-bb4e-99d4b8d3429c"; 
 
 let editMode = false;
