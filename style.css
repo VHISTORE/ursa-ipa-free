@@ -437,7 +437,6 @@ body::after {
     color: white; 
     text-transform: none;
     font-weight: 700;
-    /* КРИТИЧЕСКИ ВАЖНО: сохранение переносов для FEATURES */
     white-space: pre-wrap !important;
     word-break: break-word;
 }
@@ -447,7 +446,6 @@ body::after {
     opacity: 0.85;
     line-height: 1.6;
     margin-bottom: 30px;
-    /* КРИТИЧЕСКИ ВАЖНО: сохранение переносов для Description */
     white-space: pre-wrap !important;
     word-break: break-word;
 }
@@ -641,6 +639,36 @@ body::after {
     margin-bottom: 40px;
 }
 
+/* --- AUTH & PROFILE STYLES --- */
+.login-promo-card {
+    background: linear-gradient(135deg, #007aff, #00c6ff);
+    padding: 20px;
+    border-radius: 20px;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 10px;
+    box-shadow: 0 10px 20px rgba(0,122,255,0.2);
+}
+
+.user-profile-card {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 20px;
+    width: 100%;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-profile-card img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid #007aff;
+    object-fit: cover;
+}
+
 /* --- NOTIFICATIONS STYLES --- */
 .notify-status {
     font-size: 10px;
@@ -656,4 +684,10 @@ body::after {
 
 .notify-btn:active .notify-status {
     transform: scale(0.9);
+}
+
+/* --- RESPONSIVE FIXES --- */
+@media (max-width: 375px) {
+    .main-header h1 { font-size: 22px; }
+    .nav-label { font-size: 8px; }
 }
