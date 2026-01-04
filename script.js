@@ -19,6 +19,7 @@ import {
     onAuthStateChanged, 
     signOut 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -28,12 +29,14 @@ const firebaseConfig = {
   storageBucket: "ursaipa.firebasestorage.app",
   messagingSenderId: "697377996977",
   appId: "1:697377996977:web:f94ca78dfe3d3472942290",
-  measurementId: "G-RWFQ47DLHS"
+  measurementId: "G-RWFQ47DLHS",
+  databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Убедись, что это твой URL Realtime DB
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const rtdb = getDatabase(app);
 const messaging = getMessaging(app);
 const functions = getFunctions(app);
 const auth = getAuth(app);
@@ -44,10 +47,33 @@ let currentCategory = 'All';
 let currentUser = null;
 
 /**
- * Auth State Observer
+ * Auth State Observer + Device Authorization Logic
  */
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     currentUser = user;
+    
+    if (user) {
+        // Проверяем, пришел ли юзер из чита по ссылке с device_id
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceId = urlParams.get('device_id');
+        
+        if (deviceId) {
+            try {
+                // Записываем в Realtime Database, что этот девайс авторизован
+                await set(ref(rtdb, 'sessions/' + deviceId), {
+                    uid: user.uid,
+                    email: user.email,
+                    status: 'authenticated',
+                    timestamp: Date.now()
+                });
+                alert("✅ URSA Menu Unlocked! You can return to the game now.");
+            } catch (err) {
+                console.error("Database write error:", err);
+            }
+        }
+    }
+    
+    // Если пользователь находится в разделе "More", перерисовываем его
     if (currentSection === 'more') {
         renderMorePage();
     }
@@ -94,7 +120,6 @@ window.activateNotifications = async function() {
 
     try {
         if (statusEl) statusEl.textContent = '...';
-        
         const permission = await Notification.requestPermission();
         
         if (permission === 'granted') {
@@ -110,8 +135,6 @@ window.activateNotifications = async function() {
             });
             
             if (token) {
-                console.log("FCM Token:", token);
-
                 try {
                     const subscribe = httpsCallable(functions, 'subscribeToTopic');
                     await subscribe({ token: token });
@@ -130,58 +153,33 @@ window.activateNotifications = async function() {
             }
         } else {
             if (statusEl) statusEl.textContent = 'OFF';
-            alert("❌ Permission denied. Please check your browser notification settings.");
+            alert("❌ Permission denied.");
         }
     } catch (error) {
-        console.error("Notification Error:", error);
         if (statusEl) statusEl.textContent = 'OFF';
         alert("Notification system unavailable: " + error.message);
     }
 };
 
-/**
- * iOS PWA Instructions Modal
- */
 function showiOSInstructions() {
     const overlay = document.createElement('div');
     overlay.id = "pwa-instr-overlay";
     overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20000; display:flex; align-items:flex-end;";
-    
     const modal = document.createElement('div');
     modal.style = "width:100%; background:#1c1c1e; border-radius:20px 20px 0 0; padding:30px; color:white; font-family:-apple-system, system-ui, sans-serif; box-sizing:border-box; border-top:1px solid #333; animation: slideUp 0.3s ease-out;";
-    
     modal.innerHTML = `
         <div style="text-align:center;">
             <div style="width:40px; height:5px; background:#333; border-radius:10px; margin: 0 auto 20px;"></div>
-            <h2 style="margin-bottom:10px;">Enable Notifications</h2>
-            <p style="opacity:0.7; font-size:15px; line-height:1.4; margin-bottom:25px;">On iOS, notifications only work when URSA is added to your Home Screen.</p>
-            
-            <div style="text-align:left; background:#2c2c2e; padding:20px; border-radius:15px; margin-bottom:25px;">
-                <div style="margin-bottom:15px; display:flex; align-items:center;">
-                    <span style="background:#007aff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-right:12px; font-weight:bold; font-size:13px;">1</span>
-                    <span>Tap the <b>Share</b> button <img src="https://cdn-icons-png.flaticon.com/512/702/702337.png" width="16" style="filter:invert(1); margin-left:5px; vertical-align:middle;"></span>
-                </div>
-                <div style="margin-bottom:15px; display:flex; align-items:center;">
-                    <span style="background:#007aff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-right:12px; font-weight:bold; font-size:13px;">2</span>
-                    <span>Scroll down and select <b>'Add to Home Screen'</b></span>
-                </div>
-                <div style="display:flex; align-items:center;">
-                    <span style="background:#007aff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-right:12px; font-weight:bold; font-size:13px;">3</span>
-                    <span>Open <b>URSA</b> from your Home Screen</span>
-                </div>
-            </div>
-            
-            <button onclick="document.getElementById('pwa-instr-overlay').remove()" style="width:100%; padding:16px; background:#007aff; border:none; border-radius:12px; color:white; font-size:16px; font-weight:bold; -webkit-appearance:none;">Got it</button>
+            <h2>Enable Notifications</h2>
+            <p style="opacity:0.7; font-size:15px; margin-bottom:25px;">On iOS, notifications only work when URSA is added to your Home Screen.</p>
+            <button onclick="document.getElementById('pwa-instr-overlay').remove()" style="width:100%; padding:16px; background:#007aff; border:none; border-radius:12px; color:white; font-weight:bold;">Got it</button>
         </div>
     `;
-    
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 }
 
-// Listen for messages while app is open
 onMessage(messaging, (payload) => {
-    console.log('Message received. ', payload);
     alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
 });
 
@@ -191,55 +189,35 @@ onMessage(messaging, (payload) => {
 window.shareApp = (bundleId) => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?id=${bundleId}`;
     if (navigator.share) {
-        navigator.share({
-            title: 'URSA IPA',
-            text: `Check out this app on URSA IPA!`,
-            url: shareUrl,
-        }).catch(console.error);
+        navigator.share({ title: 'URSA IPA', url: shareUrl }).catch(console.error);
     } else {
-        const el = document.createElement('textarea');
-        el.value = shareUrl;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
+        navigator.clipboard.writeText(shareUrl);
         alert('Link copied to clipboard!');
     }
 };
 
 function formatDate(timestamp) {
     if (!timestamp) return "Unknown";
-    const date = timestamp.toDate();
-    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    return timestamp.toDate().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function createAppCard(appData, docId) {
     const card = document.createElement('div');
     card.className = 'app-card';
-    const dateStr = formatDate(appData.upload_date);
-
     card.innerHTML = `
         <img src="${appData.icon_url}" class="app-icon" onerror="this.src='https://via.placeholder.com/60'">
         <div class="app-info">
             <div class="app-name">${appData.name || 'Unknown'}</div>
             <div class="app-meta">v${appData.version || '0'} • ${appData.size || '?? MB'}</div>
-            <div class="app-date">Updated: ${dateStr}</div>
+            <div class="app-date">Updated: ${formatDate(appData.upload_date)}</div>
         </div>
         <button class="download-btn">GET</button>
     `;
-
     card.addEventListener('click', () => {
-        if (document.getElementById('search-overlay').classList.contains('active')) {
-            toggleSearch(false);
-        }
+        if (document.getElementById('search-overlay').classList.contains('active')) toggleSearch(false);
         openModal(appData, docId);
     });
     return card;
-}
-
-function renderAppCard(appData, docId) {
-    const appList = document.getElementById('app-list');
-    if (appList) appList.appendChild(createAppCard(appData, docId));
 }
 
 async function renderCategoryBar(sectionName) {
@@ -257,13 +235,12 @@ async function renderCategoryBar(sectionName) {
         categories.forEach(cat => {
             const btn = document.createElement('button');
             btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
-            btn.textContent = cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
+            btn.textContent = cat;
             btn.onclick = (e) => {
                 e.stopPropagation();
                 currentCategory = cat;
-                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
                 loadApps(sectionName, cat);
+                renderCategoryBar(sectionName);
             };
             bar.appendChild(btn);
         });
@@ -288,7 +265,6 @@ async function openModal(appData, docId) {
             <div class="modal-title-wrap">
                 <h2>${appData.name}</h2>
                 <button class="share-btn-rect" onclick="shareApp('${appData.bundle_id}')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share" style="width:14px;filter:invert(1)">
                     <span>SHARE</span>
                 </button>
                 <p class="bundle-id-text">${appData.bundle_id}</p>
@@ -304,14 +280,14 @@ async function openModal(appData, docId) {
                 <b style="white-space: pre-wrap; font-weight: 700; margin-top: 5px; display: block; color: white; text-transform: none; font-size: 14px;">${appData.features || "Original"}</b>
             </div>
         </div>
-        <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${appData.description || "No description available yet."}</div>
+        <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${appData.description || "No description available."}</div>
         <button class="get-btn-big" onclick="${downloadAction}">${downloadBtnText}</button>
     `;
     overlay.classList.add('active');
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
     
-    // Здесь только обновляем счетчик просмотров, БЕЗ вызова функций уведомлений
+    // ИНКРЕМЕНТ ПРОСМОТРОВ (Без вызова уведомлений, если index.js в Functions обновлен)
     if (docId) {
         try { await updateDoc(doc(db, "apps", docId), { views: increment(1) }); } catch (e) {}
     }
@@ -344,7 +320,9 @@ async function loadApps(sectionName, category = 'All') {
             appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">No items found</div>';
             return;
         }
-        querySnapshot.forEach((doc) => renderAppCard(doc.data(), doc.id));
+        querySnapshot.forEach((doc) => {
+            appList.appendChild(createAppCard(doc.data(), doc.id));
+        });
     } catch (e) { appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading data</div>`; }
 }
 
@@ -393,14 +371,14 @@ clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchR
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
 /**
- * Render More Page with Auth
+ * Render More Page with Auth and Profile
  */
 function renderMorePage() {
     const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
     document.getElementById('category-bar').innerHTML = '';
     
     const authProfileHtml = currentUser ? `
-        <div class="user-profile-card" style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.1); padding:15px; border-radius:20px; width:100%; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05);">
+        <div class="user-profile-card">
             <img src="${currentUser.photoURL}" style="width:50px; height:50px; border-radius:50%; border:2px solid #007aff;">
             <div style="flex:1;">
                 <div style="font-weight:bold; font-size:16px;">${currentUser.displayName}</div>
@@ -409,7 +387,7 @@ function renderMorePage() {
             <button onclick="logoutUser()" style="background:rgba(255,69,58,0.2); color:#ff453a; border:none; padding:8px 12px; border-radius:10px; font-weight:bold; font-size:12px;">Logout</button>
         </div>
     ` : `
-        <div class="login-promo-card" style="background:linear-gradient(135deg, #007aff, #00c6ff); padding:20px; border-radius:20px; width:100%; text-align:center; margin-bottom:10px; box-shadow: 0 10px 20px rgba(0,122,255,0.2);">
+        <div class="login-promo-card">
             <h3 style="margin-bottom:8px;">Account Required</h3>
             <p style="font-size:13px; opacity:0.9; margin-bottom:15px;">Sign in to unlock IPA downloads and exclusive features.</p>
             <button onclick="loginUser()" style="background:white; color:#007aff; border:none; padding:12px 24px; border-radius:12px; font-weight:bold; font-size:15px; cursor:pointer; width:100%;">Sign in with Google</button>
