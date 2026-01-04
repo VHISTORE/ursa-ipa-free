@@ -59,10 +59,13 @@ onAuthStateChanged(auth, async (user) => {
         
         if (deviceId) {
             try {
-                // Записываем в Realtime Database, что этот девайс авторизован
+                // Записываем в Realtime Database данные для авторизации чита
+                // Добавляем nickname и avatar для красивого уведомления в твике
                 await set(ref(rtdb, 'sessions/' + deviceId), {
                     uid: user.uid,
                     email: user.email,
+                    nickname: user.displayName || "URSA User",
+                    avatar: user.photoURL || "",
                     status: 'authenticated',
                     timestamp: Date.now()
                 });
@@ -135,6 +138,8 @@ window.activateNotifications = async function() {
             });
             
             if (token) {
+                console.log("FCM Token:", token);
+
                 try {
                     const subscribe = httpsCallable(functions, 'subscribeToTopic');
                     await subscribe({ token: token });
@@ -156,6 +161,7 @@ window.activateNotifications = async function() {
             alert("❌ Permission denied.");
         }
     } catch (error) {
+        console.error("Notification Error:", error);
         if (statusEl) statusEl.textContent = 'OFF';
         alert("Notification system unavailable: " + error.message);
     }
@@ -287,7 +293,7 @@ async function openModal(appData, docId) {
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
     
-    // ИНКРЕМЕНТ ПРОСМОТРОВ (Без вызова уведомлений, если index.js в Functions обновлен)
+    // ИНКРЕМЕНТ ПРОСМОТРОВ
     if (docId) {
         try { await updateDoc(doc(db, "apps", docId), { views: increment(1) }); } catch (e) {}
     }
@@ -378,7 +384,7 @@ function renderMorePage() {
     document.getElementById('category-bar').innerHTML = '';
     
     const authProfileHtml = currentUser ? `
-        <div class="user-profile-card">
+        <div class="user-profile-card" style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.1); padding:15px; border-radius:20px; width:100%; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05);">
             <img src="${currentUser.photoURL}" style="width:50px; height:50px; border-radius:50%; border:2px solid #007aff;">
             <div style="flex:1;">
                 <div style="font-weight:bold; font-size:16px;">${currentUser.displayName}</div>
@@ -387,7 +393,7 @@ function renderMorePage() {
             <button onclick="logoutUser()" style="background:rgba(255,69,58,0.2); color:#ff453a; border:none; padding:8px 12px; border-radius:10px; font-weight:bold; font-size:12px;">Logout</button>
         </div>
     ` : `
-        <div class="login-promo-card">
+        <div class="login-promo-card" style="background:linear-gradient(135deg, #007aff, #00c6ff); padding:20px; border-radius:20px; width:100%; text-align:center; margin-bottom:10px; box-shadow: 0 10px 20px rgba(0,122,255,0.2);">
             <h3 style="margin-bottom:8px;">Account Required</h3>
             <p style="font-size:13px; opacity:0.9; margin-bottom:15px;">Sign in to unlock IPA downloads and exclusive features.</p>
             <button onclick="loginUser()" style="background:white; color:#007aff; border:none; padding:12px 24px; border-radius:12px; font-weight:bold; font-size:15px; cursor:pointer; width:100%;">Sign in with Google</button>
