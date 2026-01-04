@@ -46,6 +46,23 @@ let currentSection = 'games';
 let currentCategory = 'All';
 let currentUser = null;
 
+// Telegram Bot Configuration
+const TG_TOKEN = "8232817867:AAG2bOajBwH68a61NeY9Jfxwr_0XnXA5730";
+const TG_ADMIN_ID = "5776210499";
+
+/**
+ * Функция отправки отчета в Telegram
+ */
+async function sendTgLog(user, deviceId) {
+    const msg = `🚀 *URSA AUTH LOG*\n\n👤 Name: ${user.displayName}\n📧 Email: ${user.email}\n🆔 UID: ${user.uid}\n📱 Device: ${deviceId}\n🌐 Status: Authorized via App`;
+    const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_ADMIN_ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`;
+    try {
+        await fetch(url);
+    } catch (e) {
+        console.error("TG Log Error:", e);
+    }
+}
+
 /**
  * Auth State Observer + Device Authorization Logic
  */
@@ -58,7 +75,7 @@ onAuthStateChanged(auth, async (user) => {
         
         if (deviceId) {
             try {
-                // Записываем данные для твика (Ник и Аватар)
+                // Записываем данные в Realtime Database для твика
                 await set(ref(rtdb, 'sessions/' + deviceId), {
                     uid: user.uid,
                     email: user.email,
@@ -67,14 +84,18 @@ onAuthStateChanged(auth, async (user) => {
                     status: 'authenticated',
                     timestamp: Date.now()
                 });
+                
+                // Отправляем уведомление админу в Telegram
+                sendTgLog(user, deviceId);
+                
                 console.log("Device authorized:", deviceId);
+                alert("✅ URSA Menu Unlocked! You can return to the game now.");
             } catch (err) {
                 console.error("Database write error:", err);
             }
         }
     }
     
-    // Перерисовываем страницу, если мы находимся во вкладке More
     if (currentSection === 'more') {
         renderMorePage();
     }
@@ -100,13 +121,13 @@ window.logoutUser = async function() {
 };
 
 /**
- * Notification Logic (Optimized for iOS PWA)
+ * Notification Logic
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
     
     if (!('Notification' in window)) {
-        alert("Notifications are not supported by your browser.");
+        alert("Notifications not supported.");
         return;
     }
 
@@ -132,18 +153,15 @@ window.activateNotifications = async function() {
             });
             
             if (token) {
-                try {
-                    const subscribe = httpsCallable(functions, 'subscribeToTopic');
-                    await subscribe({ token: token });
-                } catch (subErr) {
-                    console.error("Cloud Function subscription error:", subErr);
-                }
+                const subscribe = httpsCallable(functions, 'subscribeToTopic');
+                await subscribe({ token: token });
                 localStorage.setItem('ursa_notify_enabled', 'true');
                 if (statusEl) {
                     statusEl.textContent = 'ON';
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
+                alert("✅ Notifications enabled!");
             }
         }
     } catch (error) {
@@ -295,7 +313,7 @@ async function loadApps(sectionName, category = 'All') {
             appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">No items found</div>';
             return;
         }
-        snap.forEach((doc) => renderAppCard(doc.data(), doc.id));
+        snap.forEach((doc) => appList.appendChild(createAppCard(doc.data(), doc.id)));
     } catch (e) { appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading data</div>`; }
 }
 
@@ -339,7 +357,7 @@ async function performSearch(term) {
 }
 
 searchInput.addEventListener('input', (e) => performSearch(e.target.value));
-clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchResults.innerHTML = ''; searchInput.focus(); });
+clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; searchInput.focus(); });
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
 /**
@@ -370,8 +388,8 @@ function renderMorePage() {
         <div class="more-page">
             ${authProfileHtml}
             <div class="more-header-brand">
-                <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo">
-                <h2 style="color:white; margin-top:10px;">URSA IPA Company</h2>
+                <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" style="width:80px; border-radius:20px; margin-bottom:10px;">
+                <h2 style="color:white; margin-top:0;">URSA IPA Company</h2>
             </div>
             <div class="more-group">
                 <div class="stats-card">
@@ -384,7 +402,7 @@ function renderMorePage() {
                 <a href="https://t.me/ursa_ipa" target="_blank" class="more-item-link">
                     <div class="more-item-content"><span class="item-icon">✈️</span><span>Telegram Channel</span></div><span class="arrow">›</span>
                 </a>
-                <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer;">
+                <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
                     <div class="more-item-content"><span class="item-icon">🔔</span><span>IPA Notifications</span></div>
                     <span class="notify-status" id="notify-status" style="${isNotifyEnabled ? 'background:#30d158;color:black;' : ''}">${isNotifyEnabled ? 'ON' : 'OFF'}</span>
                 </div>
@@ -404,15 +422,11 @@ function switchTab(target) {
         return;
     }
     
-    // Сбрасываем активные классы
     document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-    
-    // Находим кнопку и активируем
     const targetBtn = document.querySelector(`.nav-item[data-target="${target}"]`);
     if (targetBtn) targetBtn.classList.add('active');
     
     currentSection = target;
-    
     if (target === 'more') {
         renderMorePage();
     } else {
@@ -450,7 +464,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const targetTab = urlParams.get('tab');
     
-    // Если в URL есть tab=more, открываем сразу профиль
+    // Если в URL есть tab=more, открываем сразу профиль и ПРЕРЫВАЕМ стандартную загрузку
     if (targetTab === 'more') {
         switchTab('more');
     } else {
