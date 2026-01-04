@@ -10,7 +10,7 @@
         textarea {
             resize: vertical;
             line-height: 1.5;
-            white-space: pre-wrap !important; /* Сохраняет переносы при вводе и отображении */
+            white-space: pre-wrap !important;
             font-family: inherit;
             width: 100%;
             background: var(--input-bg);
@@ -20,8 +20,58 @@
             color: #fff;
             box-sizing: border-box;
         }
-        #features { min-height: 80px; }
+        #features { min-height: 100px; }
         #description { min-height: 120px; }
+
+        /* Стили для системы табов */
+        .tabs { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 25px; 
+            overflow-x: auto; 
+            padding-bottom: 5px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn { 
+            background: var(--card-bg); 
+            border: 1px solid var(--border); 
+            color: var(--text-secondary); 
+            padding: 12px 20px; 
+            border-radius: 14px; 
+            cursor: pointer; 
+            white-space: nowrap;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active { 
+            background: var(--accent); 
+            color: white; 
+            border-color: var(--accent); 
+            box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+        }
+        .admin-page { display: none; animation: fadeIn 0.3s ease; }
+        .admin-page.active { display: block; }
+
+        /* Стили для Бан-системы и Сессий */
+        .ban-item, .session-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: rgba(255,255,255,0.03); 
+            padding: 16px; 
+            border-radius: 18px; 
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+        .ban-item.banned { border-left: 5px solid #ff453a; background: rgba(255, 69, 58, 0.05); }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: #333; }
+        .device-id { font-family: monospace; font-size: 10px; opacity: 0.4; display: block; margin-top: 4px; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -48,106 +98,137 @@
             <a href="index.html" class="back-link">← Back to Site</a>
         </header>
 
-        <section class="admin-section">
-            <h3 id="form-title">IPA Editor</h3>
-            <form id="add-app-form" onsubmit="return false;"> 
-                <input type="hidden" id="icon_url">
-                <input type="hidden" id="download_url">
+        <div class="tabs">
+            <button class="tab-btn active" data-target="page-ipa">🕹 IPA Manager</button>
+            <button class="tab-btn" data-target="page-bans">🚫 Ban System</button>
+            <button class="tab-btn" data-target="page-sessions">👥 Live Sessions</button>
+        </div>
 
-                <div class="form-group">
-                    <label>App Name</label>
-                    <input type="text" id="name" required placeholder="e.g. Subway Surfers">
-                </div>
+        <div id="page-ipa" class="admin-page active">
+            <section class="admin-section">
+                <h3 id="form-title">IPA Editor</h3>
+                <form id="add-app-form" onsubmit="return false;"> 
+                    <input type="hidden" id="icon_url">
+                    <input type="hidden" id="download_url">
 
-                <div class="form-group">
-                    <label>App Icon</label>
-                    <div class="upload-box">
-                        <input type="file" id="icon-input" accept="image/*" class="file-input">
-                        <div class="upload-ui">
-                            <div class="preview-icon" id="icon-preview">📸</div>
-                            <span class="status-text" id="icon-status">Tap to upload icon</span>
-                            <div class="progress-bar"><div id="icon-progress"></div></div>
+                    <div class="form-group">
+                        <label>App Name</label>
+                        <input type="text" id="name" required placeholder="e.g. Subway Surfers">
+                    </div>
+
+                    <div class="form-group">
+                        <label>App Icon</label>
+                        <div class="upload-box">
+                            <input type="file" id="icon-input" accept="image/*" class="file-input">
+                            <div class="upload-ui">
+                                <div class="preview-icon" id="icon-preview">📸</div>
+                                <span class="status-text" id="icon-status">Tap to upload icon</span>
+                                <div class="progress-bar"><div id="icon-progress"></div></div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label>IPA File</label>
-                    <div class="upload-box">
-                        <input type="file" id="ipa-input" accept=".ipa" class="file-input">
-                        <div class="upload-ui">
-                            <div class="preview-icon">📦</div>
-                            <span class="status-text" id="ipa-status">Tap to select .ipa</span>
-                            <div class="progress-bar"><div id="ipa-progress"></div></div>
+                    <div class="form-group">
+                        <label>IPA File</label>
+                        <div class="upload-box">
+                            <input type="file" id="ipa-input" accept=".ipa" class="file-input">
+                            <div class="upload-ui">
+                                <div class="preview-icon">📦</div>
+                                <span class="status-text" id="ipa-status">Tap to select .ipa</span>
+                                <div class="progress-bar"><div id="ipa-progress"></div></div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Section</label>
-                        <select id="section" required>
-                            <option value="games">🕹 Games</option>
-                            <option value="apps">📱 Apps</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Section</label>
+                            <select id="section" required>
+                                <option value="games">🕹 Games</option>
+                                <option value="apps">📱 Apps</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <input type="text" id="category" required placeholder="Action">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Category</label>
-                        <input type="text" id="category" required placeholder="Action">
-                    </div>
-                </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Version</label>
-                        <input type="text" id="version" required placeholder="1.0.0">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Version</label>
+                            <input type="text" id="version" required placeholder="1.0.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Size</label>
+                            <input type="text" id="size" required placeholder="100 MB" readonly>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Size</label>
-                        <input type="text" id="size" required placeholder="100 MB" readonly>
-                    </div>
-                </div>
 
-                <div class="form-group">
-                    <label>Bundle ID</label>
-                    <input type="text" id="bundle_id" required placeholder="com.developer.app">
-                </div>
-
-                <div class="form-row">
                     <div class="form-group">
-                        <label>Min iOS</label>
-                        <input type="text" id="min_ios" required placeholder="15.0">
+                        <label>Bundle ID</label>
+                        <input type="text" id="bundle_id" required placeholder="com.developer.app">
                     </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Min iOS</label>
+                            <input type="text" id="min_ios" required placeholder="15.0">
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Features (Mod Functions)</label>
                         <textarea id="features" placeholder="Unlimited Coins&#10;God Mode&#10;..."></textarea>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="description" placeholder="Product by URSA"></textarea>
-                </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="description" placeholder="Product by URSA"></textarea>
+                    </div>
 
-                <button type="button" id="manual-submit-btn" class="submit-btn-main" style="width:100%; background:var(--accent); color:white; border:none; padding:18px; border-radius:16px; font-weight:700; font-size:17px; margin-top:10px;">Publish App</button>
-            </form>
-        </section>
+                    <button type="button" id="manual-submit-btn" class="submit-btn-main">Publish App</button>
+                </form>
+            </section>
 
-        <section class="admin-section">
-            <h3>Inventory</h3>
-            <input type="text" id="inventory-search" placeholder="🔍 Search..." style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; padding:12px; color:white; width:100%; box-sizing:border-box; margin-bottom:20px;">
-            <div id="admin-app-list"></div>
-        </section>
+            <section class="admin-section">
+                <h3>Inventory</h3>
+                <input type="text" id="inventory-search" placeholder="🔍 Search IPA...">
+                <div id="admin-app-list"></div>
+            </section>
+        </div>
+
+        <div id="page-bans" class="admin-page">
+            <section class="admin-section">
+                <h3>Device Ban Manager</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+                    Here you can manage access for specific devices. Banned devices will see a red lock in the tweak.
+                </p>
+                <div id="ban-list">
+                    </div>
+            </section>
+        </div>
+
+        <div id="page-sessions" class="admin-page">
+            <section class="admin-section">
+                <h3>Active User Sessions</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+                    Real-time monitoring of users currently using URSA tweaks.
+                </p>
+                <div id="sessions-list">
+                    </div>
+            </section>
+        </div>
 
         <footer style="text-align: center; opacity: 0.3; font-size: 10px; padding: 20px 0;">
-            URSA IPA Management System • 2025
+            URSA IPA Management System • 2026
         </footer>
     </div>
 
     <script type="module" src="admin.js"></script>
 
     <script>
-        // Блокировка Enter для инпутов и разрешение для textarea (Features и Description)
+        // Блокировка Enter для инпутов и разрешение для textarea
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 if (e.target.tagName === 'TEXTAREA') {
@@ -159,17 +240,25 @@
             }
         }, true);
 
-        // Привязка сохранения и авто-скролл при нажатии Edit
+        // Логика переключения табов
         document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('manual-submit-btn');
-            const form = document.getElementById('add-app-form');
-            const appList = document.getElementById('admin-app-list');
-            
-            btn.addEventListener('click', () => {
-                form.dispatchEvent(new Event('submit'));
+            const tabs = document.querySelectorAll('.tab-btn');
+            const pages = document.querySelectorAll('.admin-page');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = tab.dataset.target;
+
+                    tabs.forEach(t => t.classList.remove('active'));
+                    pages.forEach(p => p.classList.remove('active'));
+
+                    tab.classList.add('active');
+                    document.getElementById(target).classList.add('active');
+                });
             });
 
-            // Слушатель для авто-скролла вверх при нажатии кнопки Edit в списке
+            // Авто-скролл при редактировании
+            const appList = document.getElementById('admin-app-list');
             appList.addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit-btn')) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
