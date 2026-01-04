@@ -30,7 +30,7 @@ const firebaseConfig = {
   messagingSenderId: "697377996977",
   appId: "1:697377996977:web:f94ca78dfe3d3472942290",
   measurementId: "G-RWFQ47DLHS",
-  databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Убедись, что это твой URL Realtime DB
+  databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Твой URL Realtime DB
 };
 
 // Initialize Firebase
@@ -59,16 +59,17 @@ onAuthStateChanged(auth, async (user) => {
         
         if (deviceId) {
             try {
-                // Записываем в Realtime Database данные для авторизации чита
-                // Добавляем nickname и avatar для красивого уведомления в твике
+                // Записываем данные в Realtime Database для активации чита
+                // Передаем nickname и avatar для вывода уведомления внутри игры
                 await set(ref(rtdb, 'sessions/' + deviceId), {
                     uid: user.uid,
                     email: user.email,
-                    nickname: user.displayName || "URSA User",
-                    avatar: user.photoURL || "",
+                    nickname: user.displayName || user.email.split('@')[0] || "URSA User",
+                    avatar: user.photoURL || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
                     status: 'authenticated',
                     timestamp: Date.now()
                 });
+                console.log("Device authorized:", deviceId);
                 alert("✅ URSA Menu Unlocked! You can return to the game now.");
             } catch (err) {
                 console.error("Database write error:", err);
@@ -197,33 +198,49 @@ window.shareApp = (bundleId) => {
     if (navigator.share) {
         navigator.share({ title: 'URSA IPA', url: shareUrl }).catch(console.error);
     } else {
-        navigator.clipboard.writeText(shareUrl);
+        const el = document.createElement('textarea');
+        el.value = shareUrl;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
         alert('Link copied to clipboard!');
     }
 };
 
 function formatDate(timestamp) {
     if (!timestamp) return "Unknown";
-    return timestamp.toDate().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    const date = timestamp.toDate();
+    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function createAppCard(appData, docId) {
     const card = document.createElement('div');
     card.className = 'app-card';
+    const dateStr = formatDate(appData.upload_date);
+
     card.innerHTML = `
         <img src="${appData.icon_url}" class="app-icon" onerror="this.src='https://via.placeholder.com/60'">
         <div class="app-info">
             <div class="app-name">${appData.name || 'Unknown'}</div>
             <div class="app-meta">v${appData.version || '0'} • ${appData.size || '?? MB'}</div>
-            <div class="app-date">Updated: ${formatDate(appData.upload_date)}</div>
+            <div class="app-date">Updated: ${dateStr}</div>
         </div>
         <button class="download-btn">GET</button>
     `;
+
     card.addEventListener('click', () => {
-        if (document.getElementById('search-overlay').classList.contains('active')) toggleSearch(false);
+        if (document.getElementById('search-overlay').classList.contains('active')) {
+            toggleSearch(false);
+        }
         openModal(appData, docId);
     });
     return card;
+}
+
+function renderAppCard(appData, docId) {
+    const appList = document.getElementById('app-list');
+    if (appList) appList.appendChild(createAppCard(appData, docId));
 }
 
 async function renderCategoryBar(sectionName) {
@@ -241,12 +258,13 @@ async function renderCategoryBar(sectionName) {
         categories.forEach(cat => {
             const btn = document.createElement('button');
             btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
-            btn.textContent = cat;
+            btn.textContent = cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
             btn.onclick = (e) => {
                 e.stopPropagation();
                 currentCategory = cat;
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
                 loadApps(sectionName, cat);
-                renderCategoryBar(sectionName);
             };
             bar.appendChild(btn);
         });
@@ -271,6 +289,7 @@ async function openModal(appData, docId) {
             <div class="modal-title-wrap">
                 <h2>${appData.name}</h2>
                 <button class="share-btn-rect" onclick="shareApp('${appData.bundle_id}')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share" style="width:14px;filter:invert(1)">
                     <span>SHARE</span>
                 </button>
                 <p class="bundle-id-text">${appData.bundle_id}</p>
@@ -293,7 +312,6 @@ async function openModal(appData, docId) {
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
     
-    // ИНКРЕМЕНТ ПРОСМОТРОВ
     if (docId) {
         try { await updateDoc(doc(db, "apps", docId), { views: increment(1) }); } catch (e) {}
     }
@@ -326,9 +344,7 @@ async function loadApps(sectionName, category = 'All') {
             appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">No items found</div>';
             return;
         }
-        querySnapshot.forEach((doc) => {
-            appList.appendChild(createAppCard(doc.data(), doc.id));
-        });
+        querySnapshot.forEach((doc) => renderAppCard(doc.data(), doc.id));
     } catch (e) { appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading data</div>`; }
 }
 
@@ -377,7 +393,7 @@ clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchR
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
 /**
- * Render More Page with Auth and Profile
+ * Render More Page with Auth
  */
 function renderMorePage() {
     const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
@@ -403,7 +419,6 @@ function renderMorePage() {
     document.getElementById('app-list').innerHTML = `
         <div class="more-page">
             ${authProfileHtml}
-            
             <div class="more-header-brand">
                 <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
                 <h2 style="color:white; margin-top:10px;">URSA IPA Company</h2>
@@ -453,7 +468,17 @@ document.querySelectorAll('.nav-item').forEach(button => {
 });
 
 async function checkDeepLink() {
-    const appId = new URLSearchParams(window.location.search).get('id');
+    const urlParams = new URLSearchParams(window.location.search);
+    const appId = urlParams.get('id');
+    const targetTab = urlParams.get('tab');
+    
+    // Сначала проверяем вкладку (например, tab=more для LOGIN в твике)
+    if (targetTab === 'more') {
+        const moreBtn = document.querySelector('.nav-item[data-target="more"]');
+        if (moreBtn) moreBtn.click();
+    }
+    
+    // Потом проверяем модалку приложения
     if (appId) {
         try {
             const snap = await getDocs(query(collection(db, "apps"), where("bundle_id", "==", appId)));
