@@ -12,6 +12,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+import { 
+    getAuth, 
+    signInWithPopup, 
+    GoogleAuthProvider, 
+    onAuthStateChanged, 
+    signOut 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -29,9 +36,43 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const messaging = getMessaging(app);
 const functions = getFunctions(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 let currentSection = 'games';
 let currentCategory = 'All';
+let currentUser = null;
+
+/**
+ * Auth State Observer
+ */
+onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    // Если пользователь находится в разделе "More", перерисовываем его при входе/выходе
+    if (currentSection === 'more') {
+        renderMorePage();
+    }
+});
+
+/**
+ * Auth Functions
+ */
+window.loginUser = async function() {
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("Login error:", error);
+        alert("Login failed. Please try again.");
+    }
+};
+
+window.logoutUser = async function() {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Logout error:", error);
+    }
+};
 
 /**
  * Notification Logic (Optimized for iOS PWA)
@@ -235,6 +276,13 @@ async function openModal(appData, docId) {
     const modalBody = document.getElementById('modal-body');
     const displayViews = (appData.views || 0) + 1;
 
+    // ПРОВЕРКА АВТОРИЗАЦИИ ДЛЯ СКАЧИВАНИЯ
+    const downloadAction = currentUser 
+        ? `window.location.href='${appData.download_url}'` 
+        : `alert('⚠️ Please log in via the Settings tab to download files.')`;
+    
+    const downloadBtnText = currentUser ? "DOWNLOAD IPA" : "🔒 LOG IN TO DOWNLOAD";
+
     modalBody.innerHTML = `
         <div class="modal-header-info">
             <img src="${appData.icon_url}" class="modal-icon-big" onerror="this.src='https://via.placeholder.com/60'">
@@ -258,7 +306,7 @@ async function openModal(appData, docId) {
             </div>
         </div>
         <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${appData.description || "No description available yet."}</div>
-        <button class="get-btn-big" onclick="window.location.href='${appData.download_url}'">DOWNLOAD IPA</button>
+        <button class="get-btn-big" onclick="${downloadAction}">${downloadBtnText}</button>
     `;
     overlay.classList.add('active');
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
@@ -343,6 +391,64 @@ searchInput.addEventListener('input', (e) => performSearch(e.target.value));
 clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; searchInput.focus(); });
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
+/**
+ * Render More Page with Auth
+ */
+function renderMorePage() {
+    const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
+    document.getElementById('category-bar').innerHTML = '';
+    
+    // Генерируем блок профиля в зависимости от статуса входа
+    const authProfileHtml = currentUser ? `
+        <div class="user-profile-card" style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.1); padding:15px; border-radius:20px; width:100%; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05);">
+            <img src="${currentUser.photoURL}" style="width:50px; height:50px; border-radius:50%; border:2px solid #007aff;">
+            <div style="flex:1;">
+                <div style="font-weight:bold; font-size:16px;">${currentUser.displayName}</div>
+                <div style="font-size:12px; opacity:0.6;">URSA Member</div>
+            </div>
+            <button onclick="logoutUser()" style="background:rgba(255,69,58,0.2); color:#ff453a; border:none; padding:8px 12px; border-radius:10px; font-weight:bold; font-size:12px;">Logout</button>
+        </div>
+    ` : `
+        <div class="login-promo-card" style="background:linear-gradient(135deg, #007aff, #00c6ff); padding:20px; border-radius:20px; width:100%; text-align:center; margin-bottom:10px; box-shadow: 0 10px 20px rgba(0,122,255,0.2);">
+            <h3 style="margin-bottom:8px;">Account Required</h3>
+            <p style="font-size:13px; opacity:0.9; margin-bottom:15px;">Sign in to unlock IPA downloads and exclusive features.</p>
+            <button onclick="loginUser()" style="background:white; color:#007aff; border:none; padding:12px 24px; border-radius:12px; font-weight:bold; font-size:15px; cursor:pointer; width:100%;">Sign in with Google</button>
+        </div>
+    `;
+
+    document.getElementById('app-list').innerHTML = `
+        <div class="more-page">
+            ${authProfileHtml}
+            
+            <div class="more-header-brand">
+                <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
+                <h2 style="color:white; margin-top:10px;">URSA IPA Company</h2>
+            </div>
+            <div class="more-group">
+                <div class="stats-card">
+                    <div class="stat-box"><span class="stat-value" id="stat-files">...</span><span class="stat-label">FILES</span></div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-box"><span class="stat-value" id="stat-views">...</span><span class="stat-label">VIEWS</span></div>
+                </div>
+            </div>
+            <div class="more-group">
+                <a href="https://t.me/ursa_ipa" target="_blank" class="more-item-link">
+                    <div class="more-item-content"><span class="item-icon">✈️</span><span>Telegram Channel</span></div><span class="arrow">›</span>
+                </a>
+                <div class="more-item-link" onclick="alert('Donation system coming soon!')">
+                    <div class="more-item-content"><span class="item-icon">💎</span><span>Support Author</span></div><span class="arrow">›</span>
+                </div>
+                <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
+                    <div class="more-item-content"><span class="item-icon">🔔</span><span>IPA Notifications</span></div>
+                    <span class="notify-status" id="notify-status" style="${isNotifyEnabled ? 'background:#30d158;color:black;' : ''}">${isNotifyEnabled ? 'ON' : 'OFF'}</span>
+                </div>
+            </div>
+            <div class="more-footer"><p>© 2025 URSA IPA Project</p></div>
+        </div>
+    `;
+    updateStats();
+}
+
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
         const target = button.getAttribute('data-target');
@@ -353,37 +459,8 @@ document.querySelectorAll('.nav-item').forEach(button => {
         button.classList.add('active');
         
         if (target === 'more') {
-            const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
-            document.getElementById('category-bar').innerHTML = '';
-            document.getElementById('app-list').innerHTML = `
-                <div class="more-page">
-                    <div class="more-header-brand">
-                        <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
-                        <h2 style="color:white; margin-top:10px;">URSA IPA Company</h2>
-                    </div>
-                    <div class="more-group">
-                        <div class="stats-card">
-                            <div class="stat-box"><span class="stat-value" id="stat-files">...</span><span class="stat-label">FILES</span></div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-box"><span class="stat-value" id="stat-views">...</span><span class="stat-label">VIEWS</span></div>
-                        </div>
-                    </div>
-                    <div class="more-group">
-                        <a href="https://t.me/ursa_ipa" target="_blank" class="more-item-link">
-                            <div class="more-item-content"><span class="item-icon">✈️</span><span>Telegram Channel</span></div><span class="arrow">›</span>
-                        </a>
-                        <div class="more-item-link" onclick="alert('Donation system coming soon!')">
-                            <div class="more-item-content"><span class="item-icon">💎</span><span>Support Author</span></div><span class="arrow">›</span>
-                        </div>
-                        <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
-                            <div class="more-item-content"><span class="item-icon">🔔</span><span>IPA Notifications</span></div>
-                            <span class="notify-status" id="notify-status" style="${isNotifyEnabled ? 'background:#30d158;color:black;' : ''}">${isNotifyEnabled ? 'ON' : 'OFF'}</span>
-                        </div>
-                    </div>
-                    <div class="more-footer"><p>© 2025 URSA IPA Project</p></div>
-                </div>
-            `;
-            updateStats();
+            currentSection = 'more';
+            renderMorePage();
         } else {
             currentSection = target; currentCategory = 'All';
             renderCategoryBar(target); loadApps(target);
