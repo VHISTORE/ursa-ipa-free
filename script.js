@@ -30,7 +30,7 @@ const firebaseConfig = {
   messagingSenderId: "697377996977",
   appId: "1:697377996977:web:f94ca78dfe3d3472942290",
   measurementId: "G-RWFQ47DLHS",
-  databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Убедись, что это твой URL Realtime DB
+  databaseURL: "https://ursaipa-default-rtdb.firebaseio.com"
 };
 
 // Initialize Firebase
@@ -53,14 +53,12 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
     if (user) {
-        // Проверяем, пришел ли юзер из чита по ссылке с device_id
         const urlParams = new URLSearchParams(window.location.search);
         const deviceId = urlParams.get('device_id');
         
         if (deviceId) {
             try {
-                // Записываем в Realtime Database данные для авторизации чита
-                // Добавляем nickname и avatar для вывода уведомления внутри игры
+                // Записываем данные для твика (Ник и Аватар)
                 await set(ref(rtdb, 'sessions/' + deviceId), {
                     uid: user.uid,
                     email: user.email,
@@ -70,17 +68,14 @@ onAuthStateChanged(auth, async (user) => {
                     timestamp: Date.now()
                 });
                 console.log("Device authorized:", deviceId);
-                alert("✅ URSA Menu Unlocked! You can return to the game now.");
             } catch (err) {
                 console.error("Database write error:", err);
             }
         }
     }
     
-    // ФИКС ПРЫЖКА: Если в URL есть tab=more или мы уже в More, принудительно остаемся там
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('tab') === 'more' || currentSection === 'more') {
-        currentSection = 'more';
+    // Перерисовываем страницу, если мы находимся во вкладке More
+    if (currentSection === 'more') {
         renderMorePage();
     }
 });
@@ -93,7 +88,6 @@ window.loginUser = async function() {
         await signInWithPopup(auth, provider);
     } catch (error) {
         console.error("Login error:", error);
-        alert("Login failed. Please try again.");
     }
 };
 
@@ -130,10 +124,7 @@ window.activateNotifications = async function() {
         
         if (permission === 'granted') {
             const registration = await navigator.serviceWorker.getRegistration();
-            if (!registration) {
-                alert("Service Worker not found. Please refresh the page.");
-                return;
-            }
+            if (!registration) return;
 
             const token = await getToken(messaging, { 
                 vapidKey: 'BMAUf9qk8ZkeepGWcHaffFfutJ7rAvavjGF4dvhWYZ3aUuswVAfiF2h6Pc6ZNZqT0UlkxXYT0pmJZis2LNIJBvc',
@@ -141,31 +132,22 @@ window.activateNotifications = async function() {
             });
             
             if (token) {
-                console.log("FCM Token:", token);
-
                 try {
                     const subscribe = httpsCallable(functions, 'subscribeToTopic');
                     await subscribe({ token: token });
                 } catch (subErr) {
                     console.error("Cloud Function subscription error:", subErr);
                 }
-
                 localStorage.setItem('ursa_notify_enabled', 'true');
-
                 if (statusEl) {
                     statusEl.textContent = 'ON';
                     statusEl.style.background = '#30d158';
                     statusEl.style.color = 'black';
                 }
-                alert("✅ Notifications successfully enabled!");
             }
-        } else {
-            if (statusEl) statusEl.textContent = 'OFF';
-            alert("❌ Permission denied.");
         }
     } catch (error) {
         if (statusEl) statusEl.textContent = 'OFF';
-        alert("Notification system unavailable: " + error.message);
     }
 };
 
@@ -174,7 +156,7 @@ function showiOSInstructions() {
     overlay.id = "pwa-instr-overlay";
     overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20000; display:flex; align-items:flex-end;";
     const modal = document.createElement('div');
-    modal.style = "width:100%; background:#1c1c1e; border-radius:20px 20px 0 0; padding:30px; color:white; font-family:-apple-system, system-ui, sans-serif; box-sizing:border-box; border-top:1px solid #333; animation: slideUp 0.3s ease-out;";
+    modal.style = "width:100%; background:#1c1c1e; border-radius:20px 20px 0 0; padding:30px; color:white; font-family:-apple-system, sans-serif; box-sizing:border-box; border-top:1px solid #333; animation: slideUp 0.3s ease-out;";
     modal.innerHTML = `
         <div style="text-align:center;">
             <div style="width:40px; height:5px; background:#333; border-radius:10px; margin: 0 auto 20px;"></div>
@@ -199,49 +181,33 @@ window.shareApp = (bundleId) => {
     if (navigator.share) {
         navigator.share({ title: 'URSA IPA', url: shareUrl }).catch(console.error);
     } else {
-        const el = document.createElement('textarea');
-        el.value = shareUrl;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
+        navigator.clipboard.writeText(shareUrl);
         alert('Link copied to clipboard!');
     }
 };
 
 function formatDate(timestamp) {
     if (!timestamp) return "Unknown";
-    const date = timestamp.toDate();
-    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    return timestamp.toDate().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function createAppCard(appData, docId) {
     const card = document.createElement('div');
     card.className = 'app-card';
-    const dateStr = formatDate(appData.upload_date);
-
     card.innerHTML = `
         <img src="${appData.icon_url}" class="app-icon" onerror="this.src='https://via.placeholder.com/60'">
         <div class="app-info">
             <div class="app-name">${appData.name || 'Unknown'}</div>
             <div class="app-meta">v${appData.version || '0'} • ${appData.size || '?? MB'}</div>
-            <div class="app-date">Updated: ${dateStr}</div>
+            <div class="app-date">Updated: ${formatDate(appData.upload_date)}</div>
         </div>
         <button class="download-btn">GET</button>
     `;
-
     card.addEventListener('click', () => {
-        if (document.getElementById('search-overlay').classList.contains('active')) {
-            toggleSearch(false);
-        }
+        if (document.getElementById('search-overlay').classList.contains('active')) toggleSearch(false);
         openModal(appData, docId);
     });
     return card;
-}
-
-function renderAppCard(appData, docId) {
-    const appList = document.getElementById('app-list');
-    if (appList) appList.appendChild(createAppCard(appData, docId));
 }
 
 async function renderCategoryBar(sectionName) {
@@ -259,13 +225,12 @@ async function renderCategoryBar(sectionName) {
         categories.forEach(cat => {
             const btn = document.createElement('button');
             btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
-            btn.textContent = cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
+            btn.textContent = cat;
             btn.onclick = (e) => {
                 e.stopPropagation();
                 currentCategory = cat;
-                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
                 loadApps(sectionName, cat);
+                renderCategoryBar(sectionName);
             };
             bar.appendChild(btn);
         });
@@ -277,7 +242,6 @@ async function openModal(appData, docId) {
     const modalBody = document.getElementById('modal-body');
     const displayViews = (appData.views || 0) + 1;
 
-    // ПРОВЕРКА АВТОРИЗАЦИИ ДЛЯ СКАЧИВАНИЯ
     const downloadAction = currentUser 
         ? `window.location.href='${appData.download_url}'` 
         : `alert('⚠️ Please log in via the Settings tab to download files.')`;
@@ -290,7 +254,6 @@ async function openModal(appData, docId) {
             <div class="modal-title-wrap">
                 <h2>${appData.name}</h2>
                 <button class="share-btn-rect" onclick="shareApp('${appData.bundle_id}')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/2958/2958791.png" alt="share" style="width:14px;filter:invert(1)">
                     <span>SHARE</span>
                 </button>
                 <p class="bundle-id-text">${appData.bundle_id}</p>
@@ -310,24 +273,11 @@ async function openModal(appData, docId) {
         <button class="get-btn-big" onclick="${downloadAction}">${downloadBtnText}</button>
     `;
     overlay.classList.add('active');
-    const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
-    window.history.pushState({ path: newUrl }, '', newUrl);
     
     if (docId) {
         try { await updateDoc(doc(db, "apps", docId), { views: increment(1) }); } catch (e) {}
     }
 }
-
-const closeModal = () => {
-    document.getElementById('modal-overlay').classList.remove('active');
-    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-    window.history.pushState({ path: cleanUrl }, '', cleanUrl);
-};
-
-document.getElementById('close-modal').addEventListener('click', closeModal);
-document.getElementById('modal-overlay').addEventListener('click', (e) => {
-    if (e.target.id === 'modal-overlay') closeModal();
-});
 
 async function loadApps(sectionName, category = 'All') {
     const appList = document.getElementById('app-list');
@@ -339,13 +289,13 @@ async function loadApps(sectionName, category = 'All') {
             ? query(colRef, where("section", "==", sectionName), orderBy("upload_date", "desc"))
             : query(colRef, where("section", "==", sectionName), where("category", "==", category), orderBy("upload_date", "desc"));
         
-        const querySnapshot = await getDocs(q);
+        const snap = await getDocs(q);
         appList.innerHTML = ''; 
-        if (querySnapshot.empty) {
+        if (snap.empty) {
             appList.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">No items found</div>';
             return;
         }
-        querySnapshot.forEach((doc) => renderAppCard(doc.data(), doc.id));
+        snap.forEach((doc) => renderAppCard(doc.data(), doc.id));
     } catch (e) { appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading data</div>`; }
 }
 
@@ -372,9 +322,8 @@ function toggleSearch(show) {
 }
 
 async function performSearch(term) {
-    if (term.length < 2) { searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; return; }
+    if (term.length < 2) return;
     clearSearchBtn.style.display = 'block';
-    searchResults.innerHTML = '<div style="text-align:center; padding:20px; opacity:0.5;">Searching...</div>';
     try {
         const snap = await getDocs(collection(db, "apps"));
         searchResults.innerHTML = '';
@@ -390,7 +339,7 @@ async function performSearch(term) {
 }
 
 searchInput.addEventListener('input', (e) => performSearch(e.target.value));
-clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchResults.innerHTML = ''; clearSearchBtn.style.display = 'none'; searchInput.focus(); });
+clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchResults.innerHTML = ''; searchInput.focus(); });
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
 /**
@@ -400,7 +349,6 @@ function renderMorePage() {
     const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
     document.getElementById('category-bar').innerHTML = '';
     
-    // Генерируем блок профиля в зависимости от статуса входа
     const authProfileHtml = currentUser ? `
         <div class="user-profile-card" style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.1); padding:15px; border-radius:20px; width:100%; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05);">
             <img src="${currentUser.photoURL}" style="width:50px; height:50px; border-radius:50%; border:2px solid #007aff;">
@@ -421,9 +369,8 @@ function renderMorePage() {
     document.getElementById('app-list').innerHTML = `
         <div class="more-page">
             ${authProfileHtml}
-            
             <div class="more-header-brand">
-                <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
+                <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo">
                 <h2 style="color:white; margin-top:10px;">URSA IPA Company</h2>
             </div>
             <div class="more-group">
@@ -437,10 +384,7 @@ function renderMorePage() {
                 <a href="https://t.me/ursa_ipa" target="_blank" class="more-item-link">
                     <div class="more-item-content"><span class="item-icon">✈️</span><span>Telegram Channel</span></div><span class="arrow">›</span>
                 </a>
-                <a href="https://vhistore.github.io/ursa-ipa-free/" target="_blank" class="more-item-link">
-                    <div class="more-item-content"><span class="item-icon">🌐</span><span>Website</span></div><span class="arrow">›</span>
-                </a>
-                <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
+                <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer;">
                     <div class="more-item-content"><span class="item-icon">🔔</span><span>IPA Notifications</span></div>
                     <span class="notify-status" id="notify-status" style="${isNotifyEnabled ? 'background:#30d158;color:black;' : ''}">${isNotifyEnabled ? 'ON' : 'OFF'}</span>
                 </div>
@@ -451,45 +395,46 @@ function renderMorePage() {
     updateStats();
 }
 
+/**
+ * Tab Navigation Logic
+ */
+function switchTab(target) {
+    if (target === 'search') {
+        toggleSearch(true);
+        return;
+    }
+    
+    // Сбрасываем активные классы
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+    
+    // Находим кнопку и активируем
+    const targetBtn = document.querySelector(`.nav-item[data-target="${target}"]`);
+    if (targetBtn) targetBtn.classList.add('active');
+    
+    currentSection = target;
+    
+    if (target === 'more') {
+        renderMorePage();
+    } else {
+        renderCategoryBar(target);
+        loadApps(target);
+    }
+}
+
 document.querySelectorAll('.nav-item').forEach(button => {
     button.addEventListener('click', () => {
         const target = button.getAttribute('data-target');
-        if (target === 'search') { toggleSearch(true); return; }
-        const contentArea = document.getElementById('content');
-        if (contentArea) contentArea.scrollTo({ top: 0, behavior: 'smooth' });
-        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-        
-        if (target === 'more') {
-            currentSection = 'more';
-            renderMorePage();
-        } else {
-            currentSection = target; currentCategory = 'All';
-            renderCategoryBar(target); loadApps(target);
-        }
+        switchTab(target);
     });
 });
 
+/**
+ * Deep Link Logic
+ */
 async function checkDeepLink() {
     const urlParams = new URLSearchParams(window.location.search);
     const appId = urlParams.get('id');
-    const targetTab = urlParams.get('tab');
     
-    // Сначала проверяем вкладку (например, tab=more для LOGIN в твике)
-    if (targetTab === 'more') {
-        currentSection = 'more'; // Устанавливаем статус
-        const moreBtn = document.querySelector('.nav-item[data-target="more"]');
-        if (moreBtn) {
-            // Удаляем активные классы со всех кнопок
-            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-            // Ставим активный класс на More
-            moreBtn.classList.add('active');
-            // Отрисовываем
-            renderMorePage();
-        }
-    }
-    
-    // Потом проверяем модалку приложения
     if (appId) {
         try {
             const snap = await getDocs(query(collection(db, "apps"), where("bundle_id", "==", appId)));
@@ -498,12 +443,20 @@ async function checkDeepLink() {
     }
 }
 
+/**
+ * INITIALIZATION
+ */
 window.addEventListener('DOMContentLoaded', () => {
-    // ВАЖНО: сначала проверяем ссылку, потом грузим дефолт (игры) только если мы не в More
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('tab') !== 'more') {
-        renderCategoryBar('games');
-        loadApps('games');
+    const targetTab = urlParams.get('tab');
+    
+    // Если в URL есть tab=more, открываем сразу профиль
+    if (targetTab === 'more') {
+        switchTab('more');
+    } else {
+        // Иначе грузим стандартную страницу игр
+        switchTab('games');
     }
+    
     checkDeepLink();
 });
