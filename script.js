@@ -48,7 +48,6 @@ let currentUser = null;
  */
 onAuthStateChanged(auth, (user) => {
     currentUser = user;
-    // Если пользователь находится в разделе "More", перерисовываем его при входе/выходе
     if (currentSection === 'more') {
         renderMorePage();
     }
@@ -311,6 +310,8 @@ async function openModal(appData, docId) {
     overlay.classList.add('active');
     const newUrl = `${window.location.origin}${window.location.pathname}?id=${appData.bundle_id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
+    
+    // Здесь только обновляем счетчик просмотров, БЕЗ вызова функций уведомлений
     if (docId) {
         try { await updateDoc(doc(db, "apps", docId), { views: increment(1) }); } catch (e) {}
     }
@@ -398,7 +399,6 @@ function renderMorePage() {
     const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
     document.getElementById('category-bar').innerHTML = '';
     
-    // Генерируем блок профиля в зависимости от статуса входа
     const authProfileHtml = currentUser ? `
         <div class="user-profile-card" style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.1); padding:15px; border-radius:20px; width:100%; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05);">
             <img src="${currentUser.photoURL}" style="width:50px; height:50px; border-radius:50%; border:2px solid #007aff;">
