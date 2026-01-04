@@ -30,7 +30,7 @@ const firebaseConfig = {
   messagingSenderId: "697377996977",
   appId: "1:697377996977:web:f94ca78dfe3d3472942290",
   measurementId: "G-RWFQ47DLHS",
-  databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Твой URL Realtime DB
+  databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Убедись, что это твой URL Realtime DB
 };
 
 // Initialize Firebase
@@ -59,12 +59,12 @@ onAuthStateChanged(auth, async (user) => {
         
         if (deviceId) {
             try {
-                // Записываем данные в Realtime Database для активации чита
-                // Передаем nickname и avatar для вывода уведомления внутри игры
+                // Записываем в Realtime Database данные для авторизации чита
+                // Добавляем nickname и avatar для вывода уведомления внутри игры
                 await set(ref(rtdb, 'sessions/' + deviceId), {
                     uid: user.uid,
                     email: user.email,
-                    nickname: user.displayName || user.email.split('@')[0] || "URSA User",
+                    nickname: user.displayName || "URSA User",
                     avatar: user.photoURL || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
                     status: 'authenticated',
                     timestamp: Date.now()
@@ -77,8 +77,10 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
     
-    // Если пользователь находится в разделе "More", перерисовываем его
-    if (currentSection === 'more') {
+    // ФИКС ПРЫЖКА: Если в URL есть tab=more или мы уже в More, принудительно остаемся там
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'more' || currentSection === 'more') {
+        currentSection = 'more';
         renderMorePage();
     }
 });
@@ -162,7 +164,6 @@ window.activateNotifications = async function() {
             alert("❌ Permission denied.");
         }
     } catch (error) {
-        console.error("Notification Error:", error);
         if (statusEl) statusEl.textContent = 'OFF';
         alert("Notification system unavailable: " + error.message);
     }
@@ -399,6 +400,7 @@ function renderMorePage() {
     const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
     document.getElementById('category-bar').innerHTML = '';
     
+    // Генерируем блок профиля в зависимости от статуса входа
     const authProfileHtml = currentUser ? `
         <div class="user-profile-card" style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.1); padding:15px; border-radius:20px; width:100%; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05);">
             <img src="${currentUser.photoURL}" style="width:50px; height:50px; border-radius:50%; border:2px solid #007aff;">
@@ -419,6 +421,7 @@ function renderMorePage() {
     document.getElementById('app-list').innerHTML = `
         <div class="more-page">
             ${authProfileHtml}
+            
             <div class="more-header-brand">
                 <img src="icons/logoursa.jpeg" alt="URSA Logo" class="more-logo" onerror="this.src='https://via.placeholder.com/100'">
                 <h2 style="color:white; margin-top:10px;">URSA IPA Company</h2>
@@ -434,9 +437,9 @@ function renderMorePage() {
                 <a href="https://t.me/ursa_ipa" target="_blank" class="more-item-link">
                     <div class="more-item-content"><span class="item-icon">✈️</span><span>Telegram Channel</span></div><span class="arrow">›</span>
                 </a>
-                <div class="more-item-link" onclick="alert('Donation system coming soon!')">
-                    <div class="more-item-content"><span class="item-icon">💎</span><span>Support Author</span></div><span class="arrow">›</span>
-                </div>
+                <a href="https://vhistore.github.io/ursa-ipa-free/" target="_blank" class="more-item-link">
+                    <div class="more-item-content"><span class="item-icon">🌐</span><span>Website</span></div><span class="arrow">›</span>
+                </a>
                 <div class="more-item-link notify-btn" onclick="activateNotifications()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;">
                     <div class="more-item-content"><span class="item-icon">🔔</span><span>IPA Notifications</span></div>
                     <span class="notify-status" id="notify-status" style="${isNotifyEnabled ? 'background:#30d158;color:black;' : ''}">${isNotifyEnabled ? 'ON' : 'OFF'}</span>
@@ -474,8 +477,16 @@ async function checkDeepLink() {
     
     // Сначала проверяем вкладку (например, tab=more для LOGIN в твике)
     if (targetTab === 'more') {
+        currentSection = 'more'; // Устанавливаем статус
         const moreBtn = document.querySelector('.nav-item[data-target="more"]');
-        if (moreBtn) moreBtn.click();
+        if (moreBtn) {
+            // Удаляем активные классы со всех кнопок
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            // Ставим активный класс на More
+            moreBtn.classList.add('active');
+            // Отрисовываем
+            renderMorePage();
+        }
     }
     
     // Потом проверяем модалку приложения
@@ -488,7 +499,11 @@ async function checkDeepLink() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    renderCategoryBar('games');
-    loadApps('games');
+    // ВАЖНО: сначала проверяем ссылку, потом грузим дефолт (игры) только если мы не в More
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') !== 'more') {
+        renderCategoryBar('games');
+        loadApps('games');
+    }
     checkDeepLink();
 });
