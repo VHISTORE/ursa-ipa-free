@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -9,11 +10,13 @@ const firebaseConfig = {
     projectId: "ursaipa",
     storageBucket: "ursaipa.firebasestorage.app",
     messagingSenderId: "697377996977",
-    appId: "1:697377996977:web:f94ca78dfe3d3472942290"
+    appId: "1:697377996977:web:f94ca78dfe3d3472942290",
+    databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Убедись, что URL верный
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const rtdb = getDatabase(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
@@ -32,8 +35,21 @@ const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
-const submitBtn = document.getElementById('manual-submit-btn') || document.getElementById('submit-btn');
+const submitBtn = document.getElementById('manual-submit-btn');
 const searchInput = document.getElementById('inventory-search');
+
+// --- TABS LOGIC ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.tab-btn, .admin-page').forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.dataset.target;
+        document.getElementById(target).classList.add('active');
+        
+        if (target === 'page-bans') initBanManager();
+        if (target === 'page-sessions') initSessionMonitor();
+    };
+});
 
 // --- FILE SIZE UTILITY ---
 function formatBytes(bytes, decimals = 2) {
@@ -54,7 +70,7 @@ onAuthStateChanged(auth, (user) => {
         loadInventory();
     } else {
         if (user) {
-            alert("Access Denied! You are not an authorized administrator.");
+            alert("Access Denied!");
             signOut(auth);
         }
         authContainer.style.display = 'block';
@@ -65,6 +81,84 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
 document.getElementById('logout-btn').onclick = () => signOut(auth);
 
+// --- BAN SYSTEM (RTDB) ---
+function initBanManager() {
+    const banListContainer = document.getElementById('ban-list');
+    const sessionsRef = ref(rtdb, 'sessions');
+
+    onValue(sessionsRef, (snapshot) => {
+        banListContainer.innerHTML = '';
+        const data = snapshot.val();
+        if (!data) {
+            banListContainer.innerHTML = '<p style="text-align:center; opacity:0.5;">No registered devices found.</p>';
+            return;
+        }
+
+        Object.keys(data).forEach(deviceId => {
+            const deviceData = data[deviceId];
+            const isBanned = deviceData.banned === true;
+            
+            const div = document.createElement('div');
+            div.className = `ban-item ${isBanned ? 'banned' : ''}`;
+            div.innerHTML = `
+                <div class="user-info">
+                    <img src="${deviceData.avatar || ''}" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${deviceData.nickname}'">
+                    <div>
+                        <strong>${deviceData.nickname || 'Unknown'}</strong>
+                        <span class="device-id">${deviceId}</span>
+                    </div>
+                </div>
+                <button style="background: ${isBanned ? '#30d158' : '#ff453a'}; padding: 8px 15px; border-radius: 10px; border:none; color:white; font-weight:bold; cursor:pointer;" 
+                    id="btn-ban-${deviceId}">
+                    ${isBanned ? 'Unban' : 'Ban Device'}
+                </button>
+            `;
+            banListContainer.appendChild(div);
+
+            document.getElementById(`btn-ban-${deviceId}`).onclick = () => {
+                const deviceRef = ref(rtdb, `sessions/${deviceId}`);
+                update(deviceRef, { banned: !isBanned });
+            };
+        });
+    });
+}
+
+// --- SESSION MONITOR (RTDB) ---
+function initSessionMonitor() {
+    const sessionsContainer = document.getElementById('sessions-list');
+    const sessionsRef = ref(rtdb, 'sessions');
+
+    onValue(sessionsRef, (snapshot) => {
+        sessionsContainer.innerHTML = '';
+        const data = snapshot.val();
+        if (!data) return;
+
+        // Сортировка: самые новые сверху
+        const sorted = Object.entries(data).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
+
+        sorted.forEach(([id, s]) => {
+            const div = document.createElement('div');
+            div.className = 'session-item';
+            const time = s.timestamp ? new Date(s.timestamp).toLocaleString() : 'N/A';
+            div.innerHTML = `
+                <div class="user-info">
+                    <img src="${s.avatar || ''}" class="user-avatar">
+                    <div>
+                        <strong>${s.nickname}</strong><br>
+                        <small style="opacity:0.6;">${s.email}</small>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <span style="font-size:11px; opacity:0.5;">Last Login:</span><br>
+                    <span style="font-size:12px; color:var(--accent);">${time}</span>
+                </div>
+            `;
+            sessionsContainer.appendChild(div);
+        });
+    });
+}
+
+// --- IPA MANAGER LOGIC ---
 function updateSubmitButton() {
     if (isIconUploaded && isIpaUploaded) {
         submitBtn.disabled = false;
@@ -76,37 +170,15 @@ function updateSubmitButton() {
     }
 }
 
-// --- UNIVERSAL DIRECT LINK PARSER (The "Clear" logic) ---
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${GOFILE_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${GOFILE_TOKEN}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ expireTime: 4102444800 })
         });
-        
         const result = await response.json();
-        if (result.status === "ok" && result.data) {
-            const data = result.data;
-            if (data.link) return data.link;
-            // Search deeply if structure changes
-            const deepSearch = (obj) => {
-                for (let key in obj) {
-                    if (typeof obj[key] === 'string' && obj[key].startsWith('http')) return obj[key];
-                    if (typeof obj[key] === 'object' && obj[key] !== null) {
-                        const found = deepSearch(obj[key]);
-                        if (found) return found;
-                    }
-                }
-                return null;
-            };
-            const foundUrl = deepSearch(data);
-            if (foundUrl) return foundUrl;
-        }
-        // If not ready, retry (Gofile needs a moment after upload)
+        if (result.status === "ok" && result.data && result.data.link) return result.data.link;
         if (retryCount < 5) {
             await new Promise(r => setTimeout(r, 3000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
@@ -115,19 +187,14 @@ async function createAndGetDirectLink(contentId, retryCount = 0) {
     } catch (e) { return null; }
 }
 
-// --- FILE UPLOAD LOGIC ---
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
     const hiddenInput = document.getElementById(hiddenInputId);
 
-    if (hiddenInputId === 'download_url') {
-        document.getElementById('size').value = formatBytes(file.size);
-    }
+    if (hiddenInputId === 'download_url') document.getElementById('size').value = formatBytes(file.size);
 
     try {
-        status.style.color = "white";
-        status.textContent = "🚀 Starting upload...";
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folderId', ROOT_FOLDER_ID);
@@ -143,32 +210,25 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         };
 
         xhr.onload = async function() {
-            try {
-                const res = JSON.parse(xhr.responseText);
-                if (res.status === "ok") {
-                    status.textContent = "🔗 Fetching Direct Link...";
-                    const fileId = res.data.id;
-                    // Wait 2 seconds for Gofile to index the file
-                    await new Promise(r => setTimeout(r, 2000));
-                    const directUrl = await createAndGetDirectLink(fileId);
-                    const finalUrl = directUrl || res.data.downloadPage;
-                    
-                    hiddenInput.value = finalUrl; 
-                    status.textContent = directUrl ? "✅ Ready!" : "⚠️ Fallback Ready";
-                    status.style.color = directUrl ? "#30d158" : "#ff9f0a";
-                    progress.style.background = directUrl ? "#30d158" : "#ff9f0a";
-                    
-                    if (hiddenInputId === 'icon_url') {
-                        isIconUploaded = true;
-                        document.getElementById('icon-preview').innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
-                    } else {
-                        isIpaUploaded = true;
-                    }
-                    updateSubmitButton();
+            const res = JSON.parse(xhr.responseText);
+            if (res.status === "ok") {
+                status.textContent = "🔗 Indexing...";
+                await new Promise(r => setTimeout(r, 2000));
+                const directUrl = await createAndGetDirectLink(res.data.id);
+                const finalUrl = directUrl || res.data.downloadPage;
+                hiddenInput.value = finalUrl;
+                status.textContent = "✅ Success!";
+                
+                if (hiddenInputId === 'icon_url') {
+                    isIconUploaded = true;
+                    document.getElementById('icon-preview').innerHTML = `<img src="${finalUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`;
                 } else {
-                    status.textContent = "❌ Upload Error";
+                    isIpaUploaded = true;
                 }
-            } catch (e) { status.textContent = "❌ Error"; }
+                updateSubmitButton();
+            } else {
+                status.textContent = "❌ Error";
+            }
         };
         xhr.send(formData);
     } catch (err) { status.textContent = "❌ Failed"; }
@@ -182,9 +242,7 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
-// --- INVENTORY SYSTEM ---
 async function loadInventory() {
-    adminAppList.innerHTML = '<p style="text-align:center; opacity:0.5;">Syncing...</p>';
     try {
         const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
         const snap = await getDocs(q);
@@ -195,68 +253,57 @@ async function loadInventory() {
 
 function renderList(apps) {
     adminAppList.innerHTML = '';
-    if (apps.length === 0) {
-        adminAppList.innerHTML = '<p style="text-align:center; opacity:0.3; padding:20px;">No results found</p>';
-        return;
-    }
-
     apps.forEach((appData) => {
         const div = document.createElement('div');
         div.className = 'admin-item';
         div.innerHTML = `
             <div class="admin-item-info">
-                <img src="${appData.icon_url}" width="35" height="35" style="border-radius:8px; object-fit:cover;">
-                <div>
-                    <strong>${appData.name}</strong><br>
-                    <small style="opacity:0.4; font-size:10px;">${appData.bundle_id || 'no bundle'}</small>
-                </div>
+                <img src="${appData.icon_url}" width="35" height="35" style="border-radius:8px;">
+                <div><strong>${appData.name}</strong><br><small>${appData.version}</small></div>
             </div>
             <div class="admin-item-actions">
-                <button class="edit-btn" data-id="${appData.id}">Edit</button>
-                <button class="del-btn" data-id="${appData.id}">Delete</button>
+                <button class="edit-btn" onclick="window.startEdit('${appData.id}')">Edit</button>
+                <button class="del-btn" onclick="window.deleteApp('${appData.id}')">Delete</button>
             </div>
         `;
         adminAppList.appendChild(div);
     });
-
-    document.querySelectorAll('.del-btn').forEach(btn => {
-        btn.onclick = async () => {
-            if(confirm('Are you sure you want to delete this app?')) {
-                await deleteDoc(doc(db, "apps", btn.dataset.id));
-                loadInventory();
-            }
-        };
-    });
-
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.onclick = () => {
-            const data = allApps.find(a => a.id === btn.dataset.id);
-            startEdit(btn.dataset.id, data);
-        };
-    });
 }
 
-function startEdit(id, appData) {
+window.startEdit = (id) => {
+    const appData = allApps.find(a => a.id === id);
     currentEditId = id;
     editMode = true;
-    isIconUploaded = true;
-    isIpaUploaded = true;
-    const fields = ['name', 'section', 'category', 'version', 'size', 'bundle_id', 'icon_url', 'download_url', 'min_ios', 'features', 'description'];
-    fields.forEach(f => {
-        const el = document.getElementById(f);
-        if (el) el.value = appData[f] || '';
-    });
-    document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+    isIconUploaded = isIpaUploaded = true;
     
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    submitBtn.style.background = "#30d158";
+    document.getElementById('name').value = appData.name;
+    document.getElementById('section').value = appData.section;
+    document.getElementById('category').value = appData.category;
+    document.getElementById('version').value = appData.version;
+    document.getElementById('size').value = appData.size;
+    document.getElementById('bundle_id').value = appData.bundle_id;
+    document.getElementById('min_ios').value = appData.min_ios || '';
+    document.getElementById('features').value = appData.features || '';
+    document.getElementById('description').value = appData.description || '';
+    document.getElementById('icon_url').value = appData.icon_url;
+    document.getElementById('download_url').value = appData.download_url;
+    
+    document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`;
     updateSubmitButton();
-}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.deleteApp = async (id) => {
+    if (confirm('Delete this app?')) {
+        await deleteDoc(doc(db, "apps", id));
+        loadInventory();
+    }
+};
 
 const handleSave = async () => {
     if (submitBtn.disabled) return;
     submitBtn.disabled = true;
-    submitBtn.textContent = "Saving...";
+    submitBtn.textContent = "Processing...";
 
     const appObj = {
         name: document.getElementById('name').value,
@@ -265,11 +312,11 @@ const handleSave = async () => {
         version: document.getElementById('version').value,
         size: document.getElementById('size').value,
         bundle_id: document.getElementById('bundle_id').value,
-        icon_url: document.getElementById('icon_url').value, 
-        download_url: document.getElementById('download_url').value, 
         min_ios: document.getElementById('min_ios').value,
-        features: document.getElementById('features').value || "Original",
+        features: document.getElementById('features').value,
         description: document.getElementById('description').value,
+        icon_url: document.getElementById('icon_url').value,
+        download_url: document.getElementById('download_url').value,
         upload_date: serverTimestamp()
     };
 
@@ -280,53 +327,20 @@ const handleSave = async () => {
             appObj.views = 0;
             await addDoc(collection(db, "apps"), appObj);
         }
-        resetForm();
+        form.reset();
+        editMode = false;
+        isIconUploaded = isIpaUploaded = false;
+        document.getElementById('icon-preview').innerHTML = "📸";
         loadInventory();
-        alert("Success! Data saved.");
-    } catch (err) { alert("Error: " + err.message); }
+        alert("Saved successfully!");
+    } catch (err) { alert(err.message); }
     updateSubmitButton();
 };
 
-// Listen for both Form Submit (PC) and Button Click (iPhone fix)
-form.addEventListener('submit', (e) => { e.preventDefault(); handleSave(); });
-if (document.getElementById('manual-submit-btn')) {
-    document.getElementById('manual-submit-btn').onclick = handleSave;
-} else if (submitBtn) {
-    submitBtn.onclick = handleSave;
-}
-
-function resetForm() {
-    form.reset();
-    editMode = false;
-    currentEditId = null;
-    isIconUploaded = false;
-    isIpaUploaded = false;
-    submitBtn.style.background = "#007aff";
-    document.getElementById('icon-progress').style.width = "0%";
-    document.getElementById('ipa-progress').style.width = "0%";
-    document.getElementById('icon-status').textContent = "Upload Icon";
-    document.getElementById('ipa-status').textContent = "Upload IPA";
-    document.getElementById('icon-preview').innerHTML = "📸";
-    updateSubmitButton();
-}
-
-// FIX ENTER KEY
-form.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        if (e.target.tagName === 'TEXTAREA') {
-            e.stopPropagation(); 
-        } else {
-            e.preventDefault();
-            return false;
-        }
-    }
-});
+submitBtn.onclick = handleSave;
 
 searchInput.addEventListener('input', (e) => {
-    const val = e.target.value.toLowerCase().trim();
-    const filtered = allApps.filter(app => 
-        app.name.toLowerCase().includes(val) || 
-        (app.bundle_id && app.bundle_id.toLowerCase().includes(val))
-    );
+    const val = e.target.value.toLowerCase();
+    const filtered = allApps.filter(app => app.name.toLowerCase().includes(val));
     renderList(filtered);
 });
