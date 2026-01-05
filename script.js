@@ -37,10 +37,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const rtdb = getDatabase(app);
-const messaging = getMessaging(app);
 const functions = getFunctions(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+
+// БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ Messaging (Фикс для Telegram WebView)
+let messaging = null;
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    try {
+        messaging = getMessaging(app);
+    } catch (e) {
+        console.warn("Firebase Messaging initialization skipped:", e);
+    }
+}
 
 let currentSection = 'games';
 let currentCategory = 'All';
@@ -121,8 +130,8 @@ window.logoutUser = async function() {
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
-    if (!('Notification' in window)) {
-        alert("Notifications not supported.");
+    if (!('Notification' in window) || !messaging) {
+        alert("Notifications not supported in this browser (Telegram).");
         return;
     }
 
@@ -182,9 +191,11 @@ function showiOSInstructions() {
     document.body.appendChild(overlay);
 }
 
-onMessage(messaging, (payload) => {
-    alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
-});
+if (messaging) {
+    onMessage(messaging, (payload) => {
+        alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
+    });
+}
 
 /**
  * Helper Functions
@@ -224,16 +235,19 @@ function createAppCard(appData, docId) {
 }
 
 /**
- * Modal Management
+ * Modal Management (FIXED CLOSING)
  */
 const modalOverlay = document.getElementById('modal-overlay');
 
+// Функция закрытия
 function closeModal() {
     modalOverlay.classList.remove('active');
 }
 
+// Привязываем клик к кнопке закрытия
 document.getElementById('close-modal').addEventListener('click', closeModal);
 
+// Закрытие при клике на серый фон вокруг модалки
 modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
 });
@@ -458,22 +472,22 @@ document.querySelectorAll('.nav-item').forEach(button => {
 });
 
 /**
- * Deep Link Logic - ИСПРАВЛЕНО
+ * Deep Link Logic
  */
 async function checkDeepLink() {
     const urlParams = new URLSearchParams(window.location.search);
-    const appId = urlParams.get('id');
+    let appId = urlParams.get('id');
     
+    if (!appId && window.location.href.includes('id=')) {
+        appId = window.location.href.split('id=')[1].split('&')[0];
+    }
+
     if (appId) {
         try {
-            // Ищем приложение по bundle_id
             const q = query(collection(db, "apps"), where("bundle_id", "==", appId));
             const snap = await getDocs(q);
             if (!snap.empty) {
-                // Если нашли - открываем модальное окно
                 openModal(snap.docs[0].data(), snap.docs[0].id);
-            } else {
-                console.log("App not found for ID:", appId);
             }
         } catch (e) {
             console.error("Deep link error:", e);
@@ -484,25 +498,33 @@ async function checkDeepLink() {
 /**
  * INITIALIZATION (FIXED FOR TELEGRAM)
  */
-window.addEventListener('DOMContentLoaded', () => {
+function initApp() {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
 
     const urlParams = new URLSearchParams(window.location.search);
-    const targetTab = urlParams.get('tab');
+    const targetTab = urlParams.get('tab') || 'games';
     
-    if (targetTab === 'more') {
-        switchTab('more');
-    } else {
-        switchTab('games');
-    }
+    switchTab(targetTab);
     
-    // КРИТИЧЕСКИЙ ФИКС: Даем Firebase 600ms прогрузиться в медленном WebView Telegram
-    setTimeout(() => {
+    // Пытаемся запустить проверку диплинка несколько раз
+    let attempts = 0;
+    const runCheck = setInterval(() => {
+        attempts++;
         checkDeepLink();
+        if (document.getElementById('modal-overlay').classList.contains('active') || attempts > 10) {
+            clearInterval(runCheck);
+        }
     }, 600);
 
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
     }, 300);
-});
+}
+
+// Запуск инициализации с проверкой готовности документа
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initApp();
+} else {
+    window.addEventListener('DOMContentLoaded', initApp);
+}
