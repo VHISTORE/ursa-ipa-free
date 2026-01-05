@@ -19,11 +19,15 @@
 body {
     margin: 0;
     width: 100%;
+    /* Фикс для Telegram: используем переменную из JS или fallback */
     height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
     color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
     background-color: #007aff;
-    overflow: hidden;
+    /* Разрешаем скролл body, чтобы контент в Telegram не обрезался */
+    overflow-x: hidden;
+    overflow-y: auto;
     position: relative;
 }
 
@@ -226,16 +230,17 @@ body::after {
     position: relative;
     z-index: 1;
     padding: 15px;
-    height: calc(100vh - 85px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    /* Фикс высоты контента */
+    height: auto;
+    min-height: calc(var(--vh, 1vh) * 100 - 150px);
+    overflow-y: visible;
 }
 
 #app-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding-bottom: 80px;
+    padding-bottom: 100px;
 }
 
 .app-card {
@@ -471,7 +476,7 @@ body::after {
 /* --- BOTTOM NAVIGATION --- */
 .bottom-nav {
     position: fixed;
-    bottom: 15px; 
+    bottom: 20px; 
     left: 50%;
     transform: translateX(-50%);
     width: 92%;
@@ -522,7 +527,7 @@ body::after {
 
 .nav-item.active .nav-label { color: #ffffff; }
 
-/* --- NEW: MORE PAGE STYLES --- */
+/* --- MORE PAGE STYLES --- */
 .more-page {
     display: flex;
     flex-direction: column;
@@ -676,18 +681,15 @@ body::after {
     background: rgba(255, 255, 255, 0.1);
     padding: 3px 10px;
     border-radius: 8px;
-    color: var(--text-secondary);
+    color: white;
     transition: all 0.3s ease;
     min-width: 40px;
     text-align: center;
-}
-
-.notify-btn:active .notify-status {
-    transform: scale(0.9);
 }
 
 /* --- RESPONSIVE FIXES --- */
 @media (max-width: 375px) {
     .main-header h1 { font-size: 22px; }
     .nav-label { font-size: 8px; }
+    .bottom-nav { width: 95%; height: 60px; }
 }
