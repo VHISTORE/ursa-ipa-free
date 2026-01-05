@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        window.onerror = function(m, u, l) { 
+            alert('Error: ' + m + '\nFile: ' + u + '\nLine: ' + l); 
+            return false;
+        };
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>URSA IPA</title>
@@ -72,10 +79,6 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                /**
-                 * Настройка для корня домена ursaipa.com:
-                 * Путь '/' гарантирует корректную работу Service Worker в корневом каталоге.
-                 */
                 navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
                     .then((registration) => {
                         console.log('Service Worker успешно зарегистрирован. Scope:', registration.scope);
