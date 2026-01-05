@@ -1,7 +1,7 @@
 {
   "name": "URSA IPA",
   "short_name": "URSA",
-  "start_url": "/ursa-ipa-free/index.html",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#007aff",
