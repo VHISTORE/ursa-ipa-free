@@ -224,19 +224,16 @@ function createAppCard(appData, docId) {
 }
 
 /**
- * Modal Management (FIXED CLOSING)
+ * Modal Management
  */
 const modalOverlay = document.getElementById('modal-overlay');
 
-// Функция закрытия
 function closeModal() {
     modalOverlay.classList.remove('active');
 }
 
-// Привязываем клик к кнопке закрытия
 document.getElementById('close-modal').addEventListener('click', closeModal);
 
-// Закрытие при клике на серый фон вокруг модалки
 modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
 });
@@ -461,7 +458,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
 });
 
 /**
- * Deep Link Logic
+ * Deep Link Logic - ИСПРАВЛЕНО
  */
 async function checkDeepLink() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -469,9 +466,18 @@ async function checkDeepLink() {
     
     if (appId) {
         try {
-            const snap = await getDocs(query(collection(db, "apps"), where("bundle_id", "==", appId)));
-            if (!snap.empty) openModal(snap.docs[0].data(), snap.docs[0].id);
-        } catch (e) {}
+            // Ищем приложение по bundle_id
+            const q = query(collection(db, "apps"), where("bundle_id", "==", appId));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                // Если нашли - открываем модальное окно
+                openModal(snap.docs[0].data(), snap.docs[0].id);
+            } else {
+                console.log("App not found for ID:", appId);
+            }
+        } catch (e) {
+            console.error("Deep link error:", e);
+        }
     }
 }
 
@@ -479,23 +485,23 @@ async function checkDeepLink() {
  * INITIALIZATION (FIXED FOR TELEGRAM)
  */
 window.addEventListener('DOMContentLoaded', () => {
-    // Фикс высоты для мобильных браузеров/Telegram
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetTab = urlParams.get('tab');
     
-    // Принудительная инициализация вкладок
     if (targetTab === 'more') {
         switchTab('more');
     } else {
         switchTab('games');
     }
     
-    checkDeepLink();
+    // КРИТИЧЕСКИЙ ФИКС: Даем Firebase 600ms прогрузиться в медленном WebView Telegram
+    setTimeout(() => {
+        checkDeepLink();
+    }, 600);
 
-    // Фикс для корректной отрисовки в Telegram WebView
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
     }, 300);
