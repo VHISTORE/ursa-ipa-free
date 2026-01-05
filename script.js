@@ -64,7 +64,7 @@ async function sendTgLog(user, deviceId) {
 }
 
 /**
- * Auth State Observer + Device Authorization Logic
+ * Auth State Observer
  */
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
@@ -75,7 +75,6 @@ onAuthStateChanged(auth, async (user) => {
         
         if (deviceId) {
             try {
-                // Записываем данные в Realtime Database для твика
                 await set(ref(rtdb, 'sessions/' + deviceId), {
                     uid: user.uid,
                     email: user.email,
@@ -84,10 +83,7 @@ onAuthStateChanged(auth, async (user) => {
                     status: 'authenticated',
                     timestamp: Date.now()
                 });
-                
-                // Отправляем уведомление админу в Telegram
                 sendTgLog(user, deviceId);
-                
                 console.log("Device authorized:", deviceId);
                 alert("✅ URSA Menu Unlocked! You can return to the game now.");
             } catch (err) {
@@ -125,7 +121,6 @@ window.logoutUser = async function() {
  */
 window.activateNotifications = async function() {
     const statusEl = document.getElementById('notify-status');
-    
     if (!('Notification' in window)) {
         alert("Notifications not supported.");
         return;
@@ -228,35 +223,25 @@ function createAppCard(appData, docId) {
     return card;
 }
 
-async function renderCategoryBar(sectionName) {
-    const bar = document.getElementById('category-bar');
-    if (!bar) return;
-    bar.innerHTML = '';
-    const categories = ['All'];
-    try {
-        const q = query(collection(db, "apps"), where("section", "==", sectionName));
-        const snap = await getDocs(q);
-        snap.forEach(doc => {
-            const cat = doc.data().category;
-            if (cat && !categories.includes(cat)) categories.push(cat);
-        });
-        categories.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
-            btn.textContent = cat;
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                currentCategory = cat;
-                loadApps(sectionName, cat);
-                renderCategoryBar(sectionName);
-            };
-            bar.appendChild(btn);
-        });
-    } catch (e) { console.error(e); }
+/**
+ * Modal Management (FIXED CLOSING)
+ */
+const modalOverlay = document.getElementById('modal-overlay');
+
+// Функция закрытия
+function closeModal() {
+    modalOverlay.classList.remove('active');
 }
 
+// Привязываем клик к кнопке закрытия
+document.getElementById('close-modal').addEventListener('click', closeModal);
+
+// Закрытие при клике на серый фон вокруг модалки
+modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeModal();
+});
+
 async function openModal(appData, docId) {
-    const overlay = document.getElementById('modal-overlay');
     const modalBody = document.getElementById('modal-body');
     const displayViews = (appData.views || 0) + 1;
 
@@ -290,13 +275,16 @@ async function openModal(appData, docId) {
         <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${appData.description || "No description available."}</div>
         <button class="get-btn-big" onclick="${downloadAction}">${downloadBtnText}</button>
     `;
-    overlay.classList.add('active');
+    modalOverlay.classList.add('active');
     
     if (docId) {
         try { await updateDoc(doc(db, "apps", docId), { views: increment(1) }); } catch (e) {}
     }
 }
 
+/**
+ * Content Loading Logic
+ */
 async function loadApps(sectionName, category = 'All') {
     const appList = document.getElementById('app-list');
     if (!appList) return;
@@ -317,6 +305,33 @@ async function loadApps(sectionName, category = 'All') {
     } catch (e) { appList.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.5;">Error loading data</div>`; }
 }
 
+async function renderCategoryBar(sectionName) {
+    const bar = document.getElementById('category-bar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    const categories = ['All'];
+    try {
+        const q = query(collection(db, "apps"), where("section", "==", sectionName));
+        const snap = await getDocs(q);
+        snap.forEach(doc => {
+            const cat = doc.data().category;
+            if (cat && !categories.includes(cat)) categories.push(cat);
+        });
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = `category-btn ${cat === currentCategory ? 'active' : ''}`;
+            btn.textContent = cat;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                currentCategory = cat;
+                loadApps(sectionName, cat);
+                renderCategoryBar(sectionName);
+            };
+            bar.appendChild(btn);
+        });
+    } catch (e) { console.error(e); }
+}
+
 async function updateStats() {
     try {
         const snap = await getDocs(collection(db, "apps"));
@@ -329,6 +344,9 @@ async function updateStats() {
     } catch (e) {}
 }
 
+/**
+ * Search Overlay Logic
+ */
 const searchOverlay = document.getElementById('search-overlay');
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
@@ -458,19 +476,27 @@ async function checkDeepLink() {
 }
 
 /**
- * INITIALIZATION
+ * INITIALIZATION (FIXED FOR TELEGRAM)
  */
 window.addEventListener('DOMContentLoaded', () => {
+    // Фикс высоты для мобильных браузеров/Telegram
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+
     const urlParams = new URLSearchParams(window.location.search);
     const targetTab = urlParams.get('tab');
     
-    // Если в URL есть tab=more, открываем сразу профиль и ПРЕРЫВАЕМ стандартную загрузку
+    // Принудительная инициализация вкладок
     if (targetTab === 'more') {
         switchTab('more');
     } else {
-        // Иначе грузим стандартную страницу игр
         switchTab('games');
     }
     
     checkDeepLink();
+
+    // Фикс для корректной отрисовки в Telegram WebView
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 300);
 });
