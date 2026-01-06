@@ -58,7 +58,7 @@ let currentCategory = 'All';
 let currentUser = null;
 
 // Telegram Bot Configuration
-const TG_TOKEN = "8232817867:AAG2bOajBwH68a61NeY9Jfxwr_0XnXA5730";
+const TG_TOKEN = "8491319161:AAFs5A0bSAwv_pWSBTiQlC0V_6IsErKXKMw";
 const TG_ADMIN_ID = "5776210499";
 
 /**
