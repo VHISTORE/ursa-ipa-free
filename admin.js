@@ -35,7 +35,7 @@ const adminMain = document.getElementById('admin-main');
 const authContainer = document.getElementById('auth-container');
 const form = document.getElementById('add-app-form');
 const adminAppList = document.getElementById('admin-app-list');
-const submitBtn = document.getElementById('manual-submit-btn');
+const submitBtn = document.getElementById('manual-submit-btn') || document.getElementById('submit-btn');
 const searchInput = document.getElementById('inventory-search');
 
 // --- TABS LOGIC ---
@@ -89,10 +89,7 @@ function initBanManager() {
     onValue(sessionsRef, (snapshot) => {
         banListContainer.innerHTML = '';
         const data = snapshot.val();
-        if (!data) {
-            banListContainer.innerHTML = '<p style="text-align:center; opacity:0.5;">No registered devices found.</p>';
-            return;
-        }
+        if (!data) return;
 
         Object.keys(data).forEach(deviceId => {
             const deviceData = data[deviceId];
@@ -116,8 +113,7 @@ function initBanManager() {
             banListContainer.appendChild(div);
 
             document.getElementById(`btn-ban-${deviceId}`).onclick = () => {
-                const deviceRef = ref(rtdb, `sessions/${deviceId}`);
-                update(deviceRef, { banned: !isBanned });
+                update(ref(rtdb, `sessions/${deviceId}`), { banned: !isBanned });
             };
         });
     });
@@ -125,38 +121,68 @@ function initBanManager() {
 
 function initSessionMonitor() {
     const sessionsContainer = document.getElementById('sessions-list');
-    const sessionsRef = ref(rtdb, 'sessions');
-
-    onValue(sessionsRef, (snapshot) => {
+    onValue(ref(rtdb, 'sessions'), (snapshot) => {
         sessionsContainer.innerHTML = '';
         const data = snapshot.val();
         if (!data) return;
-
         const sorted = Object.entries(data).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
-
         sorted.forEach(([id, s]) => {
             const div = document.createElement('div');
             div.className = 'session-item';
-            const time = s.timestamp ? new Date(s.timestamp).toLocaleString() : 'N/A';
             div.innerHTML = `
                 <div class="user-info">
                     <img src="${s.avatar || ''}" class="user-avatar">
-                    <div>
-                        <strong>${s.nickname}</strong><br>
-                        <small style="opacity:0.6;">${s.email}</small>
-                    </div>
+                    <div><strong>${s.nickname}</strong><br><small>${s.email}</small></div>
                 </div>
                 <div style="text-align:right;">
-                    <span style="font-size:11px; opacity:0.5;">Last Login:</span><br>
-                    <span style="font-size:12px; color:var(--accent);">${time}</span>
-                </div>
-            `;
+                    <span style="font-size:12px; color:var(--accent);">${new Date(s.timestamp).toLocaleString()}</span>
+                </div>`;
             sessionsContainer.appendChild(div);
         });
     });
 }
 
-// --- IPA MANAGER LOGIC ---
+// --- UNIVERSAL DIRECT LINK PARSER (The "Clear" logic from old code) ---
+async function createAndGetDirectLink(contentId, retryCount = 0) {
+    try {
+        const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${GOFILE_TOKEN}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ expireTime: 4102444800 })
+        });
+
+        const result = await response.json();
+        if (result.status === "ok" && result.data) {
+            const data = result.data;
+            if (data.link) return data.link;
+
+            // Deep Search logic from your old working code
+            const deepSearch = (obj) => {
+                for (let key in obj) {
+                    if (typeof obj[key] === 'string' && obj[key].startsWith('http')) return obj[key];
+                    if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        const found = deepSearch(obj[key]);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+            const foundUrl = deepSearch(data);
+            if (foundUrl) return foundUrl;
+        }
+
+        if (retryCount < 5) {
+            await new Promise(r => setTimeout(r, 3000));
+            return await createAndGetDirectLink(contentId, retryCount + 1);
+        }
+        return null;
+    } catch (e) { return null; }
+}
+
+// --- FILE UPLOAD LOGIC ---
 function updateSubmitButton() {
     if (isIconUploaded && isIpaUploaded) {
         submitBtn.disabled = false;
@@ -168,42 +194,6 @@ function updateSubmitButton() {
     }
 }
 
-async function createAndGetDirectLink(contentId, retryCount = 0) {
-    try {
-        // 1. Пытаемся создать прямую ссылку
-        const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${GOFILE_TOKEN}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ expireTime: 4102444800 })
-        });
-        const result = await response.json();
-        
-        if (result.status === "ok" && result.data && result.data.link) {
-            return result.data.link;
-        }
-
-        // 2. Резервный метод: проверка метаданных файла
-        const infoRes = await fetch(`https://api.gofile.io/contents/${contentId}`, {
-            headers: { 'Authorization': `Bearer ${GOFILE_TOKEN}` }
-        });
-        const infoData = await infoRes.json();
-        if (infoData.status === "ok" && infoData.data.directLink) {
-            return infoData.data.directLink;
-        }
-
-        // 3. Ожидание индексации (макс 32 сек)
-        if (retryCount < 8) {
-            console.log("Link not ready, retrying...");
-            await new Promise(r => setTimeout(r, 4000));
-            return await createAndGetDirectLink(contentId, retryCount + 1);
-        }
-        return null;
-    } catch (e) { 
-        console.error("DirectLink Error:", e);
-        return null; 
-    }
-}
-
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
     const status = document.getElementById(statusId);
     const progress = document.getElementById(progressId);
@@ -212,6 +202,8 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
     if (hiddenInputId === 'download_url') document.getElementById('size').value = formatBytes(file.size);
 
     try {
+        status.style.color = "white";
+        status.textContent = "🚀 Starting upload...";
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folderId', ROOT_FOLDER_ID);
@@ -227,35 +219,30 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         };
 
         xhr.onload = async function() {
-            const res = JSON.parse(xhr.responseText);
-            if (res.status === "ok") {
-                status.textContent = "🔗 Generating Direct Link...";
-                
-                // Даем серверу время на обработку перед первым запросом ссылки
-                await new Promise(r => setTimeout(r, 3000));
-                
-                const directUrl = await createAndGetDirectLink(res.data.id);
-                
-                // Критическая проверка для IPA
-                if (!directUrl && hiddenInputId === 'download_url') {
-                    status.textContent = "⚠️ Direct Link Failed";
-                    alert("Gofile failed to provide a direct link. App installation will NOT work with a page link!");
-                    hiddenInput.value = res.data.downloadPage; // Временный фолбэк
+            try {
+                const res = JSON.parse(xhr.responseText);
+                if (res.status === "ok") {
+                    status.textContent = "🔗 Fetching Direct Link...";
+                    await new Promise(r => setTimeout(r, 2000));
+                    
+                    const directUrl = await createAndGetDirectLink(res.data.id);
+                    const finalUrl = directUrl || res.data.downloadPage;
+
+                    hiddenInput.value = finalUrl;
+                    status.textContent = directUrl ? "✅ Ready!" : "⚠️ Fallback Ready";
+                    status.style.color = directUrl ? "#30d158" : "#ff9f0a";
+
+                    if (hiddenInputId === 'icon_url') {
+                        isIconUploaded = true;
+                        document.getElementById('icon-preview').innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+                    } else {
+                        isIpaUploaded = true;
+                    }
+                    updateSubmitButton();
                 } else {
-                    hiddenInput.value = directUrl || res.data.downloadPage;
-                    status.textContent = "✅ Success!";
+                    status.textContent = "❌ Upload Error";
                 }
-                
-                if (hiddenInputId === 'icon_url') {
-                    isIconUploaded = true;
-                    document.getElementById('icon-preview').innerHTML = `<img src="${hiddenInput.value}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`;
-                } else {
-                    isIpaUploaded = true;
-                }
-                updateSubmitButton();
-            } else {
-                status.textContent = "❌ Upload Error";
-            }
+            } catch (e) { status.textContent = "❌ Error"; }
         };
         xhr.send(formData);
     } catch (err) { status.textContent = "❌ Failed"; }
@@ -269,6 +256,7 @@ document.getElementById('ipa-input').onchange = (e) => {
     if (e.target.files[0]) uploadFile(e.target.files[0], 'ipa-progress', 'ipa-status', 'download_url');
 };
 
+// --- INVENTORY ---
 async function loadInventory() {
     try {
         const q = query(collection(db, "apps"), orderBy("upload_date", "desc"));
@@ -291,17 +279,14 @@ function renderList(apps) {
             <div class="admin-item-actions">
                 <button class="edit-btn" onclick="window.startEdit('${appData.id}')">Edit</button>
                 <button class="del-btn" onclick="window.deleteApp('${appData.id}')">Delete</button>
-            </div>
-        `;
+            </div>`;
         adminAppList.appendChild(div);
     });
 }
 
 window.startEdit = (id) => {
     const appData = allApps.find(a => a.id === id);
-    currentEditId = id;
-    editMode = true;
-    isIconUploaded = isIpaUploaded = true;
+    currentEditId = id; editMode = true; isIconUploaded = isIpaUploaded = true;
     
     document.getElementById('name').value = appData.name;
     document.getElementById('section').value = appData.section;
@@ -315,22 +300,18 @@ window.startEdit = (id) => {
     document.getElementById('icon_url').value = appData.icon_url;
     document.getElementById('download_url').value = appData.download_url;
     
-    document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`;
+    document.getElementById('icon-preview').innerHTML = `<img src="${appData.icon_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
     updateSubmitButton();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.deleteApp = async (id) => {
-    if (confirm('Delete this app?')) {
-        await deleteDoc(doc(db, "apps", id));
-        loadInventory();
-    }
+    if (confirm('Delete?')) { await deleteDoc(doc(db, "apps", id)); loadInventory(); }
 };
 
 const handleSave = async () => {
     if (submitBtn.disabled) return;
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Processing...";
+    submitBtn.disabled = true; submitBtn.textContent = "Processing...";
 
     const appObj = {
         name: document.getElementById('name').value,
@@ -348,18 +329,11 @@ const handleSave = async () => {
     };
 
     try {
-        if (editMode) {
-            await updateDoc(doc(db, "apps", currentEditId), appObj);
-        } else {
-            appObj.views = 0;
-            await addDoc(collection(db, "apps"), appObj);
-        }
-        form.reset();
-        editMode = false;
-        isIconUploaded = isIpaUploaded = false;
+        if (editMode) await updateDoc(doc(db, "apps", currentEditId), appObj);
+        else { appObj.views = 0; await addDoc(collection(db, "apps"), appObj); }
+        form.reset(); editMode = false; isIconUploaded = isIpaUploaded = false;
         document.getElementById('icon-preview').innerHTML = "📸";
-        loadInventory();
-        alert("Saved successfully!");
+        loadInventory(); alert("Saved!");
     } catch (err) { alert(err.message); }
     updateSubmitButton();
 };
@@ -368,6 +342,5 @@ submitBtn.onclick = handleSave;
 
 searchInput.addEventListener('input', (e) => {
     const val = e.target.value.toLowerCase();
-    const filtered = allApps.filter(app => app.name.toLowerCase().includes(val));
-    renderList(filtered);
+    renderList(allApps.filter(app => app.name.toLowerCase().includes(val)));
 });
