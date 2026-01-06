@@ -15,6 +15,8 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 import { 
     getAuth, 
     signInWithPopup, 
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider, 
     onAuthStateChanged, 
     signOut 
@@ -101,8 +103,15 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
     
+    // Принудительно обновляем текущую страницу при изменении статуса
     if (currentSection === 'more') {
         renderMorePage();
+    } else {
+        // Если открыта карточка, обновляем кнопку в ней
+        const modalBtn = document.querySelector('.get-btn-big');
+        if (modalBtn) {
+            modalBtn.textContent = user ? "DOWNLOAD IPA" : "🔒 LOG IN TO DOWNLOAD";
+        }
     }
 });
 
@@ -110,8 +119,14 @@ onAuthStateChanged(auth, async (user) => {
  * Auth Functions
  */
 window.loginUser = async function() {
+    const isTelegram = /Telegram/i.test(navigator.userAgent);
     try {
-        await signInWithPopup(auth, provider);
+        if (isTelegram) {
+            // В Telegram Popup блокируется, используем Redirect
+            await signInWithRedirect(auth, provider);
+        } else {
+            await signInWithPopup(auth, provider);
+        }
     } catch (error) {
         console.error("Login error:", error);
     }
@@ -120,10 +135,14 @@ window.loginUser = async function() {
 window.logoutUser = async function() {
     try {
         await signOut(auth);
+        location.reload();
     } catch (error) {
         console.error("Logout error:", error);
     }
 };
+
+// Проверка результата редиректа для Telegram
+getRedirectResult(auth).catch((error) => console.error("Redirect Error:", error));
 
 /**
  * Notification Logic
@@ -507,11 +526,12 @@ function initApp() {
     
     switchTab(targetTab);
     
-    // Пытаемся запустить проверку диплинка несколько раз
+    // Пытаемся запустить проверку диплинка несколько раз (фикс для WebView)
     let attempts = 0;
     const runCheck = setInterval(() => {
         attempts++;
         checkDeepLink();
+        // Если окно открылось или прошло 10 попыток - стоп
         if (document.getElementById('modal-overlay').classList.contains('active') || attempts > 10) {
             clearInterval(runCheck);
         }
