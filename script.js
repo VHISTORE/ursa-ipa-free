@@ -107,7 +107,7 @@ onAuthStateChanged(auth, async (user) => {
     if (currentSection === 'more') {
         renderMorePage();
     } else {
-        // Если открыта карточка, обновляем кнопку в ней
+        // Если открыта карточка, обновляем текст кнопки в реальном времени
         const modalBtn = document.querySelector('.get-btn-big');
         if (modalBtn) {
             modalBtn.textContent = user ? "DOWNLOAD IPA" : "🔒 LOG IN TO DOWNLOAD";
@@ -141,8 +141,8 @@ window.logoutUser = async function() {
     }
 };
 
-// Проверка результата редиректа для Telegram
-getRedirectResult(auth).catch((error) => console.error("Redirect Error:", error));
+// Важно для Telegram: подхватываем результат входа после возврата на страницу
+getRedirectResult(auth).catch((error) => console.error("Redirect Result Error:", error));
 
 /**
  * Notification Logic
@@ -526,12 +526,11 @@ function initApp() {
     
     switchTab(targetTab);
     
-    // Пытаемся запустить проверку диплинка несколько раз (фикс для WebView)
+    // Пытаемся запустить проверку диплинка несколько раз
     let attempts = 0;
     const runCheck = setInterval(() => {
         attempts++;
         checkDeepLink();
-        // Если окно открылось или прошло 10 попыток - стоп
         if (document.getElementById('modal-overlay').classList.contains('active') || attempts > 10) {
             clearInterval(runCheck);
         }
