@@ -11,7 +11,7 @@ const firebaseConfig = {
     storageBucket: "ursaipa.firebasestorage.app",
     messagingSenderId: "697377996977",
     appId: "1:697377996977:web:f94ca78dfe3d3472942290",
-    databaseURL: "https://ursaipa-default-rtdb.firebaseio.com" // Убедись, что URL верный
+    databaseURL: "https://ursaipa-default-rtdb.firebaseio.com"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -81,7 +81,7 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
 document.getElementById('logout-btn').onclick = () => signOut(auth);
 
-// --- BAN SYSTEM (RTDB) ---
+// --- BAN SYSTEM ---
 function initBanManager() {
     const banListContainer = document.getElementById('ban-list');
     const sessionsRef = ref(rtdb, 'sessions');
@@ -123,7 +123,6 @@ function initBanManager() {
     });
 }
 
-// --- SESSION MONITOR (RTDB) ---
 function initSessionMonitor() {
     const sessionsContainer = document.getElementById('sessions-list');
     const sessionsRef = ref(rtdb, 'sessions');
@@ -133,7 +132,6 @@ function initSessionMonitor() {
         const data = snapshot.val();
         if (!data) return;
 
-        // Сортировка: самые новые сверху
         const sorted = Object.entries(data).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
 
         sorted.forEach(([id, s]) => {
@@ -172,19 +170,38 @@ function updateSubmitButton() {
 
 async function createAndGetDirectLink(contentId, retryCount = 0) {
     try {
+        // 1. Пытаемся создать прямую ссылку
         const response = await fetch(`https://api.gofile.io/contents/${contentId}/directlinks`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${GOFILE_TOKEN}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ expireTime: 4102444800 })
         });
         const result = await response.json();
-        if (result.status === "ok" && result.data && result.data.link) return result.data.link;
-        if (retryCount < 5) {
-            await new Promise(r => setTimeout(r, 3000));
+        
+        if (result.status === "ok" && result.data && result.data.link) {
+            return result.data.link;
+        }
+
+        // 2. Резервный метод: проверка метаданных файла
+        const infoRes = await fetch(`https://api.gofile.io/contents/${contentId}`, {
+            headers: { 'Authorization': `Bearer ${GOFILE_TOKEN}` }
+        });
+        const infoData = await infoRes.json();
+        if (infoData.status === "ok" && infoData.data.directLink) {
+            return infoData.data.directLink;
+        }
+
+        // 3. Ожидание индексации (макс 32 сек)
+        if (retryCount < 8) {
+            console.log("Link not ready, retrying...");
+            await new Promise(r => setTimeout(r, 4000));
             return await createAndGetDirectLink(contentId, retryCount + 1);
         }
         return null;
-    } catch (e) { return null; }
+    } catch (e) { 
+        console.error("DirectLink Error:", e);
+        return null; 
+    }
 }
 
 async function uploadFile(file, progressId, statusId, hiddenInputId) {
@@ -212,22 +229,32 @@ async function uploadFile(file, progressId, statusId, hiddenInputId) {
         xhr.onload = async function() {
             const res = JSON.parse(xhr.responseText);
             if (res.status === "ok") {
-                status.textContent = "🔗 Indexing...";
-                await new Promise(r => setTimeout(r, 2000));
+                status.textContent = "🔗 Generating Direct Link...";
+                
+                // Даем серверу время на обработку перед первым запросом ссылки
+                await new Promise(r => setTimeout(r, 3000));
+                
                 const directUrl = await createAndGetDirectLink(res.data.id);
-                const finalUrl = directUrl || res.data.downloadPage;
-                hiddenInput.value = finalUrl;
-                status.textContent = "✅ Success!";
+                
+                // Критическая проверка для IPA
+                if (!directUrl && hiddenInputId === 'download_url') {
+                    status.textContent = "⚠️ Direct Link Failed";
+                    alert("Gofile failed to provide a direct link. App installation will NOT work with a page link!");
+                    hiddenInput.value = res.data.downloadPage; // Временный фолбэк
+                } else {
+                    hiddenInput.value = directUrl || res.data.downloadPage;
+                    status.textContent = "✅ Success!";
+                }
                 
                 if (hiddenInputId === 'icon_url') {
                     isIconUploaded = true;
-                    document.getElementById('icon-preview').innerHTML = `<img src="${finalUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`;
+                    document.getElementById('icon-preview').innerHTML = `<img src="${hiddenInput.value}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`;
                 } else {
                     isIpaUploaded = true;
                 }
                 updateSubmitButton();
             } else {
-                status.textContent = "❌ Error";
+                status.textContent = "❌ Upload Error";
             }
         };
         xhr.send(formData);
