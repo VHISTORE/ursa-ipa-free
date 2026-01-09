@@ -43,7 +43,7 @@ const functions = getFunctions(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ Messaging (Фикс для Telegram WebView)
+// БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ Messaging
 let messaging = null;
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
     try {
@@ -61,9 +61,6 @@ let currentUser = null;
 const TG_TOKEN = "8491319161:AAFs5A0bSAwv_pWSBTiQlC0V_6IsErKXKMw";
 const TG_ADMIN_ID = "5776210499";
 
-/**
- * Функция отправки отчета в Telegram
- */
 async function sendTgLog(user, deviceId) {
     const msg = `🚀 *URSA AUTH LOG*\n\n👤 Name: ${user.displayName}\n📧 Email: ${user.email}\n🆔 UID: ${user.uid}\n📱 Device: ${deviceId}\n🌐 Status: Authorized via App`;
     const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_ADMIN_ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`;
@@ -103,14 +100,24 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
     
-    // Принудительно обновляем текущую страницу при изменении статуса
+    // Обновляем текущую страницу если More
     if (currentSection === 'more') {
         renderMorePage();
-    } else {
-        // Если открыта карточка, обновляем текст кнопки в реальном времени
-        const modalBtn = document.querySelector('.get-btn-big');
-        if (modalBtn) {
-            modalBtn.textContent = user ? "DOWNLOAD IPA" : "🔒 LOG IN TO DOWNLOAD";
+    } 
+
+    // ЛОГИКА ДЛЯ МОДАЛКИ: Если карточка открыта, обновляем кнопку на лету
+    const modalBtn = document.querySelector('.get-btn-big');
+    if (modalBtn) {
+        if (user) {
+            modalBtn.textContent = "DOWNLOAD IPA";
+            // Если ссылка сохранена в атрибуте, восстанавливаем действие
+            const savedUrl = modalBtn.getAttribute('data-download-url');
+            if (savedUrl) {
+                modalBtn.onclick = () => window.location.href = savedUrl;
+            }
+        } else {
+            modalBtn.textContent = "🔒 LOG IN TO DOWNLOAD";
+            modalBtn.onclick = () => window.loginUser();
         }
     }
 });
@@ -122,7 +129,6 @@ window.loginUser = async function() {
     const isTelegram = /Telegram/i.test(navigator.userAgent);
     try {
         if (isTelegram) {
-            // В Telegram Popup блокируется, используем Redirect
             await signInWithRedirect(auth, provider);
         } else {
             await signInWithPopup(auth, provider);
@@ -141,7 +147,6 @@ window.logoutUser = async function() {
     }
 };
 
-// Важно для Telegram: подхватываем результат входа после возврата на страницу
 getRedirectResult(auth).catch((error) => console.error("Redirect Result Error:", error));
 
 /**
@@ -254,19 +259,13 @@ function createAppCard(appData, docId) {
 }
 
 /**
- * Modal Management (FIXED CLOSING)
+ * Modal Management
  */
 const modalOverlay = document.getElementById('modal-overlay');
-
-// Функция закрытия
 function closeModal() {
     modalOverlay.classList.remove('active');
 }
-
-// Привязываем клик к кнопке закрытия
 document.getElementById('close-modal').addEventListener('click', closeModal);
-
-// Закрытие при клике на серый фон вокруг модалки
 modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
 });
@@ -275,11 +274,11 @@ async function openModal(appData, docId) {
     const modalBody = document.getElementById('modal-body');
     const displayViews = (appData.views || 0) + 1;
 
-    const downloadAction = currentUser 
+    // Решаем, какой текст и действие будет у кнопки сразу при открытии
+    const btnText = currentUser ? "DOWNLOAD IPA" : "🔒 LOG IN TO DOWNLOAD";
+    const btnAction = currentUser 
         ? `window.location.href='${appData.download_url}'` 
-        : `alert('⚠️ Please log in via the Settings tab to download files.')`;
-    
-    const downloadBtnText = currentUser ? "DOWNLOAD IPA" : "🔒 LOG IN TO DOWNLOAD";
+        : `window.loginUser()`;
 
     modalBody.innerHTML = `
         <div class="modal-header-info">
@@ -303,7 +302,7 @@ async function openModal(appData, docId) {
             </div>
         </div>
         <div class="modal-desc" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6; opacity: 0.9; font-size: 15px; margin-bottom: 30px;">${appData.description || "No description available."}</div>
-        <button class="get-btn-big" onclick="${downloadAction}">${downloadBtnText}</button>
+        <button class="get-btn-big" data-download-url="${appData.download_url}" onclick="${btnAction}">${btnText}</button>
     `;
     modalOverlay.classList.add('active');
     
@@ -409,7 +408,7 @@ clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchR
 document.getElementById('cancel-search').addEventListener('click', () => toggleSearch(false));
 
 /**
- * Render More Page with Auth
+ * Render More Page
  */
 function renderMorePage() {
     const isNotifyEnabled = localStorage.getItem('ursa_notify_enabled') === 'true';
@@ -515,7 +514,7 @@ async function checkDeepLink() {
 }
 
 /**
- * INITIALIZATION (FIXED FOR TELEGRAM)
+ * INITIALIZATION
  */
 function initApp() {
     const vh = window.innerHeight * 0.01;
@@ -526,7 +525,6 @@ function initApp() {
     
     switchTab(targetTab);
     
-    // Пытаемся запустить проверку диплинка несколько раз
     let attempts = 0;
     const runCheck = setInterval(() => {
         attempts++;
@@ -541,7 +539,6 @@ function initApp() {
     }, 300);
 }
 
-// Запуск инициализации с проверкой готовности документа
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initApp();
 } else {
